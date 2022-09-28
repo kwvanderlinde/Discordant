@@ -1,7 +1,7 @@
 {
   "required": true,
   "minVersion": "0.8",
-  "package": "ru.aiefu.discordium.mixin",
+  "package": "com.kwvanderlinde.discordant.mixin",
   "compatibilityLevel": "JAVA_16",
   "mixins": [
     "ChatMixins",

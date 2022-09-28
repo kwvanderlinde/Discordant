@@ -1,5 +1,5 @@
 plugins {
-	id 'fabric-loom' version '0.11-SNAPSHOT'
+	id 'fabric-loom' version '0.12-SNAPSHOT'
 	id 'maven-publish'
 }
 
@@ -32,7 +32,7 @@ dependencies {
 	// Fabric API. This is technically optional, but you probably want it anyway.
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 	include 'com.konghq:unirest-java:3.13.10:standalone'
-	include(modImplementation ("net.dv8tion:JDA:5.0.0-alpha.13") {
+	include(modImplementation ("net.dv8tion:JDA:5.0.0-alpha.20") {
 		exclude module: 'opus-java'
 	})
 	include(modImplementation ("com.konghq:unirest-java:3.13.4:standalone")){
@@ -40,8 +40,8 @@ dependencies {
 		exclude group: "org.apache.httpcomponents", module: "httpclient"
 		exclude group: "commons-logging", module: "commons-logging"
 	}
-	include 'com.squareup.okhttp3:okhttp:4.10.0'
-	include 'com.squareup.okio:okio:3.1.0'
+	include 'com.squareup.okhttp3:okhttp:4.9.3'
+	include 'com.squareup.okio:okio:3.2.0'
 	include 'org.jetbrains:annotations:23.0.0'
 	include 'org.apache.commons:commons-collections4:4.4'
 	include "com.neovisionaries:nv-websocket-client:2.14"

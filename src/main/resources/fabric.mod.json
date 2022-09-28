@@ -1,29 +1,29 @@
 {
   "schemaVersion": 1,
-  "id": "discordium",
+  "id": "discordant",
   "version": "${version}",
 
   "name": "Discord Chat Forwarding",
   "description": "Minecraft-Discord chat bridge and more!",
   "authors": [
-    "Aiefu"
+    "kwvanderlinde"
   ],
   "contact": {
     "homepage": "",
-    "sources": "https://github.com/CmdrJane/Discord-chat-forwarding"
+    "sources": "https://github.com/kwvanderlinde/discordant"
   },
 
   "license": "GPL-v3",
-  "icon": "assets/discordium/icon.png",
+  "icon": "assets/discordant/icon.png",
 
   "environment": "*",
   "entrypoints": {
     "server": [
-      "ru.aiefu.discordium.discord.DiscordLink"
+      "com.kwvanderlinde.discordant.discord.Discordant"
     ]
   },
   "mixins": [
-    "discordium.mixins.json"
+    "discordant.mixins.json"
   ],
 
   "depends": {

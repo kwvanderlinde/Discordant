@@ -1,4 +1,4 @@
-package ru.aiefu.discordium;
+package com.kwvanderlinde.discordant;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
@@ -6,10 +6,10 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 
 
-
 public interface OnPlayerMessageEvent {
 
-    Event<OnPlayerMessageEvent> EVENT = EventFactory.createArrayBacked(OnPlayerMessageEvent.class,
+    Event<OnPlayerMessageEvent> EVENT = EventFactory.createArrayBacked(
+            OnPlayerMessageEvent.class,
             (listeners) -> (player, msg, text) -> {
                 for (OnPlayerMessageEvent listener : listeners) {
                     listener.onMessage(player, msg, text);

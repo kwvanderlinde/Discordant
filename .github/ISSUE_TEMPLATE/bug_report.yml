@@ -1,0 +1,67 @@
+name: Bug Report
+description: File a bug report
+title: "[Bug]: "
+labels: bug
+body:
+  - type: textarea
+    attributes:
+      label: Reproduction steps
+      description: Clear instructions for how the bug can be reproduced. Attach files if useful.
+      placeholder: |
+        1. Install discordant 1.0.0+1.19
+        2. Start minecraft
+        3. Minecraft crashes
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Actual Behaviour
+      description: |
+        A clear description of what you observe after completing the reproduction steps. Include any log files.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Expected Behaviour
+      description: |
+        A clear description of what you expect to observe after completing the reproduction steps.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional Information
+      description: If screenshot or other files help describe the problem more, add them here.
+    validations:
+      required: false
+  - type: input
+    attributes:
+      label: Discordant Version
+      description: The exact name of the discorant JAR that you are using.
+      placeholder: |
+        Version: discordant-1.0.0+1.19
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Minecraft Version
+      description: Which version of minecraft are you running?
+      placeholder: |
+        Version: 1.19.2
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Fabric Loader Version
+      description: Which version of fabric are you running on?
+      placeholder: |
+        Version: 0.14.9
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Platform
+      description: Which operating system and version are you running on?
+      placeholder: |
+        E.g., Windows 11, Linux Mint 21, etc.
+    validations:
+      required: true

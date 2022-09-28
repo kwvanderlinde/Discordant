@@ -1,4 +1,4 @@
-package ru.aiefu.discordium.discord;
+package com.kwvanderlinde.discordant.discord;
 
 public class DiscordConfig {
     public String token = "";
@@ -46,19 +46,25 @@ public class DiscordConfig {
     public transient String cLinkMsg1;
     public transient String cLinkMsg2 = "";
 
-    public void setup(){
+    public void setup() {
         String msg = commandLinkMsg;
         int i = msg.indexOf("{code}");
-        if(i != -1){
+        if (i != -1) {
             cLinkMsg1 = msg.substring(0, i);
-            cLinkMsg2 = msg.substring(i +6);
-        } else cLinkMsg1 = msg;
+            cLinkMsg2 = msg.substring(i + 6);
+        }
+        else {
+            cLinkMsg1 = msg;
+        }
 
         String msg2 = verificationDisconnect;
         int j = msg2.indexOf("{code}");
-        if(j != -1){
+        if (j != -1) {
             vDisconnectMsg1 = msg2.substring(0, j);
-            vDisconnectMsg2 = msg2.substring(j +6);
-        } else vDisconnectMsg1 = msg2;
+            vDisconnectMsg2 = msg2.substring(j + 6);
+        }
+        else {
+            vDisconnectMsg1 = msg2;
+        }
     }
 }
