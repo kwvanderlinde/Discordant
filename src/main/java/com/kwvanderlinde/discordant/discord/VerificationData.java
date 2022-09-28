@@ -1,4 +1,4 @@
-package ru.aiefu.discordium.discord;
+package com.kwvanderlinde.discordant.discord;
 
 public record VerificationData(String name, String uuid, long validUntil) {
 }

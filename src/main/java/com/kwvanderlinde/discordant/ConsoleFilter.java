@@ -1,12 +1,12 @@
-package ru.aiefu.discordium;
+package com.kwvanderlinde.discordant;
 
+import com.kwvanderlinde.discordant.discord.Discordant;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.Marker;
 import org.apache.logging.log4j.core.Filter;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.Logger;
 import org.apache.logging.log4j.message.Message;
-import ru.aiefu.discordium.discord.DiscordLink;
 
 import java.text.SimpleDateFormat;
 
@@ -93,10 +93,11 @@ public class ConsoleFilter implements Filter {
     public Result filter(LogEvent event) {
         String logName = event.getLoggerName();
         int i = logName.lastIndexOf('.');
-        if(i != -1)
-        logName = logName.substring(i + 1);
+        if (i != -1) {
+            logName = logName.substring(i + 1);
+        }
         String sb = String.format("[%s] [%s] [%s]: %s", formatter.format(event.getTimeMillis()), logName, event.getLevel(), event.getMessage().getFormattedMessage());
-        DiscordLink.postConsoleMessage(sb);
+        Discordant.postConsoleMessage(sb);
         return null;
     }
 

@@ -1,5 +1,7 @@
-package ru.aiefu.discordium.mixin;
+package com.kwvanderlinde.discordant.mixin;
 
+import com.kwvanderlinde.discordant.IServerPlayer;
+import com.kwvanderlinde.discordant.discord.Discordant;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -16,12 +18,11 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import ru.aiefu.discordium.IServerPlayer;
-import ru.aiefu.discordium.discord.DiscordLink;
 
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixins extends Player implements IServerPlayer {
-    @Shadow protected abstract boolean acceptsChat(ResourceKey<ChatType> resourceKey);
+    @Shadow
+    protected abstract boolean acceptsChat(ResourceKey<ChatType> resourceKey);
 
     private boolean notifySound = true;
 
@@ -30,24 +31,24 @@ public abstract class ServerPlayerMixins extends Player implements IServerPlayer
     }
 
 
-    @Inject(method = "die", at =@At("TAIL"))
-    public void sendDeathMsg(DamageSource damageSource, CallbackInfo ci){
-        DiscordLink.sendDeathMsg(this.getScoreboardName(), damageSource.getLocalizedDeathMessage((ServerPlayer)(Object)this).getString(), this.getStringUUID());
+    @Inject(method = "die", at = @At("TAIL"))
+    public void sendDeathMsg(DamageSource damageSource, CallbackInfo ci) {
+        Discordant.sendDeathMsg(this.getScoreboardName(), damageSource.getLocalizedDeathMessage((ServerPlayer) (Object) this).getString(), this.getStringUUID());
     }
 
-    @Inject(method = "readAdditionalSaveData", at =@At("TAIL"))
-    public void readUserDiscordSettings(CompoundTag compoundTag, CallbackInfo ci){
-        if(compoundTag.contains("discordiumData")){
-            CompoundTag tag = compoundTag.getCompound("discordiumData");
+    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
+    public void readUserDiscordSettings(CompoundTag compoundTag, CallbackInfo ci) {
+        if (compoundTag.contains("discordantData")) {
+            CompoundTag tag = compoundTag.getCompound("discordantData");
             this.notifySound = tag.getBoolean("soundnotify");
         }
     }
 
-    @Inject(method = "addAdditionalSaveData", at =@At("TAIL"))
-    public void saveUserDiscordSettings(CompoundTag compoundTag, CallbackInfo ci){
+    @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
+    public void saveUserDiscordSettings(CompoundTag compoundTag, CallbackInfo ci) {
         CompoundTag tag = new CompoundTag();
         tag.putBoolean("soundnotify", notifySound);
-        compoundTag.put("discordiumData", tag);
+        compoundTag.put("discordantData", tag);
     }
 
     @Override

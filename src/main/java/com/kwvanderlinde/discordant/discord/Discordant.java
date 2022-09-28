@@ -1,12 +1,25 @@
-package ru.aiefu.discordium.discord;
+package com.kwvanderlinde.discordant.discord;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.kwvanderlinde.discordant.ConsoleFilter;
+import com.kwvanderlinde.discordant.DiscordantCommands;
+import com.kwvanderlinde.discordant.OnPlayerMessageEvent;
+import com.kwvanderlinde.discordant.ProfileLinkCommand;
+import com.kwvanderlinde.discordant.config.ConfigManager;
+import com.kwvanderlinde.discordant.config.LinkedProfile;
+import com.kwvanderlinde.discordant.language.ServerLanguage;
 import kong.unirest.Unirest;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.*;
+import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.Webhook;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import net.fabricmc.api.DedicatedServerModInitializer;
@@ -19,34 +32,24 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import okhttp3.OkHttpClient;
-import okhttp3.Protocol;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import ru.aiefu.discordium.ConsoleFilter;
-import ru.aiefu.discordium.DiscordiumCommands;
-import ru.aiefu.discordium.OnPlayerMessageEvent;
-import ru.aiefu.discordium.ProfileLinkCommand;
-import ru.aiefu.discordium.config.ConfigManager;
-import ru.aiefu.discordium.config.LinkedProfile;
-import ru.aiefu.discordium.language.ServerLanguage;
 
 import javax.security.auth.login.LoginException;
-import java.awt.*;
+import java.awt.Color;
 import java.io.IOException;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
-public class DiscordLink implements DedicatedServerModInitializer {
+public class Discordant implements DedicatedServerModInitializer {
     public static JDA jda;
     public static TextChannel chatChannel;
     public static TextChannel consoleChannel;
     public static DiscordConfig config;
     public static DedicatedServer server;
-    public static Logger logger = LogManager.getLogger("Discordium");
+    public static Logger logger = LogManager.getLogger("Discordant");
 
     public static HashMap<String, LinkedProfile> linkedPlayers = new HashMap<>();
     public static HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
@@ -67,118 +70,125 @@ public class DiscordLink implements DedicatedServerModInitializer {
         try {
             manager.craftPaths();
             manager.genDiscordLinkSettings();
-            DiscordLink.config = manager.readDiscordLinkSettings();
-            DiscordLink.config.setup();
-        } catch (IOException e) {
+            Discordant.config = manager.readDiscordLinkSettings();
+            Discordant.config.setup();
+        }
+        catch (IOException e) {
             e.printStackTrace();
         }
         try {
             initialize(manager);
-        } catch (LoginException | InterruptedException e) {
+        }
+        catch (LoginException | InterruptedException e) {
             e.printStackTrace();
         }
         language.loadAllLanguagesIncludingModded(config.targetLocalization, config.isBidirectional);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-            DiscordiumCommands.register(dispatcher);
-            if(config.enableAccountLinking && !config.forceLinking){
+            DiscordantCommands.register(dispatcher);
+            if (config.enableAccountLinking && !config.forceLinking) {
                 ProfileLinkCommand.register(dispatcher);
             }
         });
         ServerLifecycleEvents.SERVER_STARTED.register(server -> {
-            DiscordLink.server = (DedicatedServer) server;
-            sendMessage(chatChannel, DiscordLink.config.startupMsg);
-            OnPlayerMessageEvent.EVENT.register(DiscordLink::onPlayerMessage);
+            Discordant.server = (DedicatedServer) server;
+            sendMessage(chatChannel, Discordant.config.startupMsg);
+            OnPlayerMessageEvent.EVENT.register(Discordant::onPlayerMessage);
         });
         ServerTickEvents.START_SERVER_TICK.register(server -> currentTime = System.currentTimeMillis());
         ServerTickEvents.END_SERVER_TICK.register(server -> {
             int tickCount = server.getTickCount();
-            if(tickCount % 6000 == 0){
-                DiscordLink.setTopic(server.getPlayerCount(), server.getMaxPlayers());
+            if (tickCount % 6000 == 0) {
+                Discordant.setTopic(server.getPlayerCount(), server.getMaxPlayers());
             }
-            if(tickCount % 1200 == 0){
-                for(Map.Entry<Integer, VerificationData> e : pendingPlayers.entrySet()){
+            if (tickCount % 1200 == 0) {
+                for (Map.Entry<Integer, VerificationData> e : pendingPlayers.entrySet()) {
                     VerificationData data = e.getValue();
-                    if(currentTime > data.validUntil()){
+                    if (currentTime > data.validUntil()) {
                         pendingPlayersUUID.remove(data.uuid());
                         pendingPlayers.remove(e.getKey());
                     }
                 }
             }
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> DiscordLink.shutdown());
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> Discordant.shutdown());
     }
 
     public static void initialize(ConfigManager manager) throws LoginException, InterruptedException {
-        jda = JDABuilder.createDefault(config.token).setHttpClient((new OkHttpClient.Builder()).protocols(Collections.singletonList(Protocol.HTTP_1_1)).build()).setMemberCachePolicy(MemberCachePolicy.ALL).enableIntents(GatewayIntent.GUILD_MEMBERS).addEventListeners(new Object[]{new DiscordListener()}).build();
+        final var okHttpClient = new OkHttpClient.Builder().build();
+        jda = JDABuilder.createDefault(config.token).setHttpClient(okHttpClient).setMemberCachePolicy(MemberCachePolicy.ALL).enableIntents(GatewayIntent.GUILD_MEMBERS).addEventListeners(new Object[]{new DiscordListener()}).build();
         jda.awaitReady();
-        if(!config.serverId.isEmpty()){
+        if (!config.serverId.isEmpty()) {
             guild = jda.getGuildById(config.serverId);
-            if(guild != null && config.preloadDiscordMembers)
+            if (guild != null && config.preloadDiscordMembers) {
                 guild.loadMembers();
+            }
         }
         botName = jda.getSelfUser().getName();
         chatChannel = jda.getTextChannelById(config.chatChannelId);
         consoleChannel = jda.getTextChannelById(config.consoleChannelId);
         String webhookUrl = config.webhookUrl;
         boolean bl = config.enableWebhook;
-        if(bl && config.webhookUrl.length() > 0)
-        for (Webhook w : chatChannel.retrieveWebhooks().complete()){
-            if(w.getUrl().equals(webhookUrl)){
-                bl = false;
-                break;
+        if (bl && config.webhookUrl.length() > 0) {
+            for (Webhook w : chatChannel.retrieveWebhooks().complete()) {
+                if (w.getUrl().equals(webhookUrl)) {
+                    bl = false;
+                    break;
+                }
             }
         }
 
-        if(bl){
+        if (bl) {
             config.webhookUrl = chatChannel.createWebhook("Minecraft Chat Message Forwarding").complete().getUrl();
             manager.writeCurrentConfigInstance();
         }
     }
 
-    public static void postConsoleMessage(String msg){
-        if(consoleChannel != null && !stopped && config.enableLogsForwarding){
-            if(msg.length() > 1999)
+    public static void postConsoleMessage(String msg) {
+        if (consoleChannel != null && !stopped && config.enableLogsForwarding) {
+            if (msg.length() > 1999) {
                 msg = msg.substring(0, 1999);
+            }
             sendMessage(consoleChannel, msg);
         }
     }
 
-    public static void postChatMessage(MutableComponent component){
-        if(chatChannel != null && !stopped){
+    public static void postChatMessage(MutableComponent component) {
+        if (chatChannel != null && !stopped) {
             sendMessage(chatChannel, component.getString());
         }
     }
 
-    public static void onPlayerMessage(ServerPlayer player, String msg, MutableComponent textComponent){
-        if(config.enableMentions) {
+    public static void onPlayerMessage(ServerPlayer player, String msg, MutableComponent textComponent) {
+        if (config.enableMentions) {
             msg = parseDiscordMentions(msg);
         }
-        if(config.enableWebhook){
+        if (config.enableWebhook) {
             String uuid = player.getStringUUID();
             String name = player.getScoreboardName();
-            if(config.enableAccountLinking && guild != null && config.useDiscordData){
+            if (config.enableAccountLinking && guild != null && config.useDiscordData) {
                 LinkedProfile profile = linkedPlayers.get(uuid);
-                if(profile != null){
+                if (profile != null) {
                     Member m = guild.getMemberById(profile.discordId);
-                    if(m != null) {
+                    if (m != null) {
                         postWebHookMsg(msg, m.getEffectiveName(), m.getEffectiveAvatarUrl());
                         return;
                     }
                 }
             }
             postWebHookMsg(msg, name, getPlayerIconUrl(name, uuid));
-        } else {
+        }
+        else {
             postChatMessage(textComponent);
         }
     }
 
     private static final Pattern pattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
 
-    public static String parseDiscordMentions(String msg){
-        if(guild != null){
-            List<String> mentions = pattern.matcher(msg).results().map(matchResult -> matchResult.group(0)).collect(Collectors.toList());
-            for (String s : mentions){
-                if(User.USER_TAG.matcher(s).matches()) {
+    public static String parseDiscordMentions(String msg) {
+        if (guild != null) {
+            List<String> mentions = pattern.matcher(msg).results().map(matchResult -> matchResult.group(0)).toList();
+            for (String s : mentions) {
+                if (User.USER_TAG.matcher(s).matches()) {
                     Member m = guild.getMemberByTag(s);
                     if (m != null) {
                         msg = msg.replaceAll("@" + s, "<@!" + m.getId() + ">");
@@ -189,90 +199,95 @@ public class DiscordLink implements DedicatedServerModInitializer {
         return msg;
     }
 
-    public static void postWebHookMsg(String msg, String username, String avatarUrl){
-        if(chatChannel != null && !stopped) {
+    public static void postWebHookMsg(String msg, String username, String avatarUrl) {
+        if (chatChannel != null && !stopped) {
             JsonObject object = new JsonObject();
             object.addProperty("username", username);
             object.addProperty("avatar_url", avatarUrl);
             object.addProperty("content", msg);
             try {
                 sendWebhook(object);
-            } catch (IOException e) {
+            }
+            catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    public static void greetingMsg(String username, String uuid){
+    public static void greetingMsg(String username, String uuid) {
         EmbedBuilder e = new EmbedBuilder();
         e.setAuthor(config.joinMessage.replaceAll("\\{username}", username), null, getPlayerIconUrl(username, uuid));
         e.setColor(Color.GREEN);
         sendEmbed(chatChannel, e.build());
     }
 
-    public static void logoutMsg(String username, String uuid){
+    public static void logoutMsg(String username, String uuid) {
         EmbedBuilder e = new EmbedBuilder();
         e.setAuthor(config.disconnectMessage.replaceAll("\\{username}", username), null, getPlayerIconUrl(username, uuid));
         e.setColor(Color.RED);
         sendEmbed(chatChannel, e.build());
     }
 
-    public static void sendAdvancement(String username, Advancement adv, String uuid){
+    public static void sendAdvancement(String username, Advancement adv, String uuid) {
         EmbedBuilder e = new EmbedBuilder();
         e.setAuthor(String.format(Language.getInstance().getOrDefault("chat.type.advancement." + adv.getDisplay().getFrame().getName()), username, adv.getDisplay().getTitle().getString()), null, getPlayerIconUrl(username, uuid));
-        if(config.appendAdvancementDescription){
+        if (config.appendAdvancementDescription) {
             e.setDescription(String.format("** %s **", adv.getDisplay().getDescription().getString()));
         }
         e.setColor(12524269);
         sendEmbed(chatChannel, e.build());
     }
 
-    public static void sendDeathMsg(String username, String msg, String uuid){
+    public static void sendDeathMsg(String username, String msg, String uuid) {
         EmbedBuilder e = new EmbedBuilder();
         e.setAuthor(msg, null, getPlayerIconUrl(username, uuid));
         e.setColor(Color.RED);
         sendEmbed(chatChannel, e.build());
     }
 
-    public static String getPlayerIconUrl(String name, String uuid){
-        return DiscordLink.config.playerHeadsUrl.replaceAll("\\{username}", name).replaceAll("\\{uuid}", uuid);
+    public static String getPlayerIconUrl(String name, String uuid) {
+        return Discordant.config.playerHeadsUrl.replaceAll("\\{username}", name).replaceAll("\\{uuid}", uuid);
     }
 
-    public static void sendEmbed(TextChannel ch, MessageEmbed e){
-        if(ch!= null && !stopped){
+    public static void sendEmbed(TextChannel ch, MessageEmbed e) {
+        if (ch != null && !stopped) {
             chatChannel.sendMessageEmbeds(e).queue();
         }
     }
 
-    public static void sendMessage(MessageChannel ch, String msg){
-        if(ch!= null && !stopped){
+    public static void sendMessage(MessageChannel ch, String msg) {
+        if (ch != null && !stopped) {
             ch.sendMessage(msg).queue();
         }
     }
 
     public static void sendWebhook(JsonObject json) throws IOException {
-        if(!stopped && config.webhookUrl.length() > 0)
-        Unirest.post(config.webhookUrl).header("Content-type", "application/json").body(new Gson().toJson(json)).asStringAsync();
+        if (!stopped && config.webhookUrl.length() > 0) {
+            Unirest.post(config.webhookUrl).header("Content-type", "application/json").body(new Gson().toJson(json)).asStringAsync();
+        }
     }
 
-    public static void setTopic(int count, int maxCount){
-        if(!stopped)
-        chatChannel.getManager().setTopic(DiscordLink.config.channelTopicMsg + count + "/" + maxCount).queue();
+    public static void setTopic(int count, int maxCount) {
+        if (!stopped) {
+            chatChannel.getManager().setTopic(Discordant.config.channelTopicMsg + count + "/" + maxCount).queue();
+        }
     }
 
-    public static void setTopic(String msg){
-        if(!stopped)
+    public static void setTopic(String msg) {
+        if (!stopped) {
             chatChannel.getManager().setTopic(msg).queue();
+        }
     }
 
-    public static void shutdown(){
+    public static void shutdown() {
         setTopic(config.shutdownTopicMsg);
         sendMessage(chatChannel, config.serverStopMsg);
         Unirest.shutDown();
         stopped = true;
         try {
             Thread.sleep(350L);
-        } catch (InterruptedException e) {
+        }
+        catch (InterruptedException e) {
             e.printStackTrace();
         }
         jda.shutdown();

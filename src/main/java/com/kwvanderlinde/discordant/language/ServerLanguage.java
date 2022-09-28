@@ -1,8 +1,9 @@
-package ru.aiefu.discordium.language;
+package com.kwvanderlinde.discordant.language;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
+import com.kwvanderlinde.discordant.discord.Discordant;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModMetadata;
@@ -17,9 +18,13 @@ import net.minecraft.util.FormattedCharSequence;
 import org.apache.commons.io.IOUtils;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
-import ru.aiefu.discordium.discord.DiscordLink;
 
-import java.io.*;
+import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.file.Files;
@@ -32,10 +37,10 @@ import java.util.Map;
 public class ServerLanguage extends Language {
     private Map<String, String> storage;
     private boolean isBidirectional = false;
-    private static final Logger logger = DiscordLink.logger;
+    private static final Logger logger = Discordant.logger;
     private static final HashSet<String> excludeModIDs = new HashSet<>();
 
-    public ServerLanguage(){
+    public ServerLanguage() {
         excludeModIDs.add("fabric-api-lookup-api-v1");
         excludeModIDs.add("fabric-events-interaction-v0");
         excludeModIDs.add("confabricate");
@@ -49,21 +54,22 @@ public class ServerLanguage extends Language {
         excludeModIDs.add("fabric-networking-v0");
     }
 
-    public void loadAllLanguagesIncludingModded(String languageKey, boolean bl){
+    public void loadAllLanguagesIncludingModded(String languageKey, boolean bl) {
         this.isBidirectional = bl;
         HashMap<String, String> languageKeys = new HashMap<>();
         try {
             loadMinecraftLanguage(languageKey, languageKeys);
-        } catch (IOException e) {
+        }
+        catch (IOException e) {
             e.printStackTrace();
         }
         Collection<ModContainer> mods = FabricLoader.getInstance().getAllMods();
-        if(!mods.isEmpty()){
-            for (ModContainer c : mods){
+        if (!mods.isEmpty()) {
+            for (ModContainer c : mods) {
                 ModMetadata meta = c.getMetadata();
-                if(meta instanceof LoaderModMetadata loaderModMetadata && !excludeModIDs.contains(meta.getId())){
+                if (meta instanceof LoaderModMetadata loaderModMetadata && !excludeModIDs.contains(meta.getId())) {
                     EntrypointMetadata data = loaderModMetadata.getEntrypoints("main").stream().findFirst().orElse(null);
-                    if(data != null) {
+                    if (data != null) {
                         try {
                             String locale = languageKey;
                             Class<?> modClass = FabricLauncherBase.getClass(data.getValue());
@@ -77,10 +83,14 @@ public class ServerLanguage extends Language {
                                 loadFromJson(inputStream, languageKeys::put);
                                 logger.info(String.format("Loaded language %s for mod %s", locale, meta.getName()));
                                 inputStream.close();
-                            } else
+                            }
+                            else {
                                 logger.error(String.format("Failed to load default en_us locale for mod %s", meta.getName()));
-                        } catch (ClassNotFoundException ignored) {}
-                        catch (IOException e){
+                            }
+                        }
+                        catch (ClassNotFoundException ignored) {
+                        }
+                        catch (IOException e) {
                             e.printStackTrace();
                         }
                     }
@@ -92,22 +102,24 @@ public class ServerLanguage extends Language {
     }
 
     private void loadMinecraftLanguage(String languageKey, HashMap<String, String> languageKeys) throws IOException {
-        String path = String.format("./config/discord-chat/languages/1.19/%s.json", languageKey);
+        String path = String.format("./config/discordant/languages/1.19/%s.json", languageKey);
         InputStream stream = null;
         String locale = languageKey;
-        if(Files.exists(Paths.get(path))){
+        if (Files.exists(Paths.get(path))) {
             stream = new FileInputStream(path);
-        } else {
+        }
+        else {
             HttpURLConnection connection = (HttpURLConnection) new URL("https://launchermeta.mojang.com/v1/packages/4d2c1138477c7aafe8fb370de11ea5b23a963edc/1.19.json").openConnection();
             Gson gson = new Gson();
             JsonObject indexes = gson.fromJson(new InputStreamReader(connection.getInputStream()), JsonObject.class);
-            HashMap<String, AssetsData> data = gson.fromJson(indexes.get("objects"), new TypeToken<HashMap<String, AssetsData>>(){}.getType());
+            HashMap<String, AssetsData> data = gson.fromJson(indexes.get("objects"), new TypeToken<HashMap<String, AssetsData>>() {
+            }.getType());
             AssetsData lang = data.get(String.format("minecraft/lang/%s.json", languageKey));
-            if(lang != null){
+            if (lang != null) {
                 String hash = lang.hash;
                 connection = (HttpURLConnection) new URL(String.format("https://resources.download.minecraft.net/%s/%s", hash.substring(0, 2), hash)).openConnection();
                 stream = connection.getInputStream();
-                if(stream != null){
+                if (stream != null) {
                     byte[] inputArray = IOUtils.toByteArray(stream);
                     stream = new ByteArrayInputStream(inputArray);
                     FileOutputStream file = new FileOutputStream(path);
@@ -116,18 +128,17 @@ public class ServerLanguage extends Language {
                 }
             }
         }
-        if(stream == null) {
+        if (stream == null) {
             stream = MinecraftServer.class.getResourceAsStream("/assets/minecraft/lang/en_us.json");
             logger.info(String.format("Failed to load minecraft locale %s, trying to load default en_us locale", locale));
             locale = "en_us(fallback)";
         }
-        if(stream != null){
+        if (stream != null) {
             loadFromJson(stream, languageKeys::put);
             logger.info("Loaded minecraft language " + locale);
             stream.close();
         }
     }
-
 
 
     @Override

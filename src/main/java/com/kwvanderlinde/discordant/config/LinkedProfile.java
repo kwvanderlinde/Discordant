@@ -1,4 +1,4 @@
-package ru.aiefu.discordium.config;
+package com.kwvanderlinde.discordant.config;
 
 @SuppressWarnings("all")
 public class LinkedProfile {
@@ -6,7 +6,7 @@ public class LinkedProfile {
     public final String uuid;
     public final String discordId;
 
-    public LinkedProfile(String name, String uuid, String discordId){
+    public LinkedProfile(String name, String uuid, String discordId) {
         this.name = name;
         this.uuid = uuid;
         this.discordId = discordId;
