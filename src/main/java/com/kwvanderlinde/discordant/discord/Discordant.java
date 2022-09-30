@@ -2,12 +2,12 @@ package com.kwvanderlinde.discordant.discord;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.kwvanderlinde.discordant.ConsoleFilter;
 import com.kwvanderlinde.discordant.DiscordantCommands;
 import com.kwvanderlinde.discordant.OnPlayerMessageEvent;
 import com.kwvanderlinde.discordant.ProfileLinkCommand;
 import com.kwvanderlinde.discordant.config.ConfigManager;
 import com.kwvanderlinde.discordant.config.LinkedProfile;
+import com.kwvanderlinde.discordant.discord.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.language.ServerLanguage;
 import kong.unirest.Unirest;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -32,6 +32,7 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import okhttp3.OkHttpClient;
+import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -48,6 +49,7 @@ public class Discordant implements DedicatedServerModInitializer {
     public static TextChannel chatChannel;
     public static TextChannel consoleChannel;
     public static DiscordConfig config;
+    public static DiscordantAppender logAppender;
     public static DedicatedServer server;
     public static Logger logger = LogManager.getLogger("Discordant");
 
@@ -66,7 +68,8 @@ public class Discordant implements DedicatedServerModInitializer {
     @Override
     public void onInitializeServer() {
         ConfigManager manager = new ConfigManager();
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addFilter(new ConsoleFilter());
+        logAppender = new DiscordantAppender(Level.INFO);
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
         try {
             manager.craftPaths();
             manager.genDiscordLinkSettings();
@@ -110,7 +113,7 @@ public class Discordant implements DedicatedServerModInitializer {
                 }
             }
         });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> Discordant.shutdown());
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> shutdown());
     }
 
     public static void initialize(ConfigManager manager) throws LoginException, InterruptedException {
@@ -181,7 +184,6 @@ public class Discordant implements DedicatedServerModInitializer {
             postChatMessage(textComponent);
         }
     }
-
     private static final Pattern pattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
 
     public static String parseDiscordMentions(String msg) {
@@ -245,6 +247,7 @@ public class Discordant implements DedicatedServerModInitializer {
         sendEmbed(chatChannel, e.build());
     }
 
+
     public static String getPlayerIconUrl(String name, String uuid) {
         return Discordant.config.playerHeadsUrl.replaceAll("\\{username}", name).replaceAll("\\{uuid}", uuid);
     }
@@ -257,6 +260,7 @@ public class Discordant implements DedicatedServerModInitializer {
 
     public static void sendMessage(MessageChannel ch, String msg) {
         if (ch != null && !stopped) {
+            // For some reason this causes us to hang.
             ch.sendMessage(msg).queue();
         }
     }
@@ -279,7 +283,9 @@ public class Discordant implements DedicatedServerModInitializer {
         }
     }
 
-    public static void shutdown() {
+    public void shutdown() {
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
+
         setTopic(config.shutdownTopicMsg);
         sendMessage(chatChannel, config.serverStopMsg);
         Unirest.shutDown();
