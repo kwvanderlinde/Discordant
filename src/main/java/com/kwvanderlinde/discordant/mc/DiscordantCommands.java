@@ -1,6 +1,6 @@
-package com.kwvanderlinde.discordant;
+package com.kwvanderlinde.discordant.mc;
 
-import com.kwvanderlinde.discordant.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;

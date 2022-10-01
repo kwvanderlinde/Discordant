@@ -1,10 +1,11 @@
-package com.kwvanderlinde.discordant.discord;
+package com.kwvanderlinde.discordant.mc.discord;
 
-import com.kwvanderlinde.discordant.config.ConfigManager;
-import com.kwvanderlinde.discordant.config.LinkedProfile;
-import com.kwvanderlinde.discordant.discord.msgparsers.DefaultParser;
-import com.kwvanderlinde.discordant.discord.msgparsers.MentionParser;
-import com.kwvanderlinde.discordant.discord.msgparsers.MsgParser;
+import com.kwvanderlinde.discordant.core.config.ConfigManager;
+import com.kwvanderlinde.discordant.core.config.LinkedProfile;
+import com.kwvanderlinde.discordant.core.discord.DiscordApi;
+import com.kwvanderlinde.discordant.mc.discord.msgparsers.DefaultParser;
+import com.kwvanderlinde.discordant.mc.discord.msgparsers.MentionParser;
+import com.kwvanderlinde.discordant.mc.discord.msgparsers.MsgParser;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -20,10 +21,11 @@ import java.util.List;
 import java.util.UUID;
 
 public class DiscordListener extends ListenerAdapter {
-
+    private final DiscordApi discordApi;
     private final MsgParser chatHandler;
 
-    public DiscordListener() {
+    public DiscordListener(DiscordApi discordApi) {
+        this.discordApi = discordApi;
         if (Discordant.config.enableMentions) {
             chatHandler = new MentionParser();
         }
@@ -76,14 +78,14 @@ public class DiscordListener extends ListenerAdapter {
         if (command.startsWith("list")) {
             List<ServerPlayer> players = server.getPlayerList().getPlayers();
             if (players.isEmpty()) {
-                Discordant.sendMessage(e.getChannel(), Discordant.config.noPlayersMsg);
+                discordApi.sendMessage(e.getChannel(), Discordant.config.noPlayersMsg);
                 return;
             }
             StringBuilder sb = new StringBuilder(Discordant.config.onlinePlayersMsg);
             for (ServerPlayer p : players) {
                 sb.append(p.getScoreboardName()).append(", ");
             }
-            Discordant.sendMessage(e.getChannel(), sb.substring(0, sb.length() - 2));
+            discordApi.sendMessage(e.getChannel(), sb.substring(0, sb.length() - 2));
         }
     }
 
@@ -104,7 +106,7 @@ public class DiscordListener extends ListenerAdapter {
                         ServerPlayer player = server.getPlayerList().getPlayer(UUID.fromString(id));
                         if (player != null) {
                             Discordant.linkedPlayers.put(id, profile);
-                            Discordant.linkedPlayersByDiscordId.put(profile.discordId, player.getGameProfile().getName());
+                            Discordant.linkedPlayersByDiscordId.put(profile.discordId(), player.getGameProfile().getName());
                         }
                     }
                     e.getChannel().sendMessage(Discordant.config.successfulVerificationMsg
@@ -113,10 +115,11 @@ public class DiscordListener extends ListenerAdapter {
                 }
                 else {
                     LinkedProfile profile = ConfigManager.getLinkedProfile(id);
-                    if (profile != null) {
-                        Member m = Discordant.guild.getMemberById(profile.discordId);
+                    final var guild = discordApi.getGuild();
+                    if (profile != null && guild != null) {
+                        Member m = guild.getMemberById(profile.discordId());
                         String discordName = m != null ? m.getEffectiveName() : "Unknown user";
-                        e.getChannel().sendMessage(Discordant.config.alreadyLinked.replaceAll("\\{username}", profile.name).replaceAll("\\{discordname}", discordName)).queue();
+                        e.getChannel().sendMessage(Discordant.config.alreadyLinked.replaceAll("\\{username}", profile.name()).replaceAll("\\{discordname}", discordName)).queue();
                         Discordant.pendingPlayersUUID.remove(id);
                         Discordant.pendingPlayers.remove(code);
                     }

@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant;
+package com.kwvanderlinde.discordant.mc;
 
 import net.minecraft.network.chat.ChatType;
 import net.minecraft.resources.ResourceKey;

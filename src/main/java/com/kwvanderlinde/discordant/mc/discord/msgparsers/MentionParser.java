@@ -1,7 +1,7 @@
-package com.kwvanderlinde.discordant.discord.msgparsers;
+package com.kwvanderlinde.discordant.mc.discord.msgparsers;
 
-import com.kwvanderlinde.discordant.IServerPlayer;
-import com.kwvanderlinde.discordant.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.IServerPlayer;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.minecraft.ChatFormatting;

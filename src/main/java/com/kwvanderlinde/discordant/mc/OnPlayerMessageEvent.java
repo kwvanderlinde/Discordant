@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant;
+package com.kwvanderlinde.discordant.mc;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;

@@ -1,9 +1,9 @@
-package com.kwvanderlinde.discordant.config;
+package com.kwvanderlinde.discordant.core.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.kwvanderlinde.discordant.discord.DiscordConfig;
-import com.kwvanderlinde.discordant.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
@@ -64,7 +64,7 @@ public class ConfigManager {
 
     public static void saveLinkedProfile(LinkedProfile profile) {
         String gson = new GsonBuilder().setPrettyPrinting().create().toJson(profile);
-        File file = new File(String.format("./config/discordant/linked-profiles/%s.json", profile.uuid));
+        File file = new File(String.format("./config/discordant/linked-profiles/%s.json", profile.uuid()));
         fileWriter(file, gson);
     }
 

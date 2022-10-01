@@ -19,7 +19,7 @@
   "environment": "*",
   "entrypoints": {
     "server": [
-      "com.kwvanderlinde.discordant.discord.Discordant"
+      "com.kwvanderlinde.discordant.mc.discord.Discordant"
     ]
   },
   "mixins": [

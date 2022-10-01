@@ -1,6 +1,6 @@
-package com.kwvanderlinde.discordant.mixin;
+package com.kwvanderlinde.discordant.mc.mixin;
 
-import com.kwvanderlinde.discordant.OnPlayerMessageEvent;
+import com.kwvanderlinde.discordant.mc.OnPlayerMessageEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.PlayerChatMessage;

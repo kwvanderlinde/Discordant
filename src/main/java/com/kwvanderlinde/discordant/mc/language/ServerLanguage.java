@@ -1,9 +1,9 @@
-package com.kwvanderlinde.discordant.language;
+package com.kwvanderlinde.discordant.mc.language;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import com.kwvanderlinde.discordant.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModMetadata;

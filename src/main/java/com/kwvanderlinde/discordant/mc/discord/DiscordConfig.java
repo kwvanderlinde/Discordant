@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.discord;
+package com.kwvanderlinde.discordant.mc.discord;
 
 public class DiscordConfig {
     public String token = "";
@@ -10,7 +10,6 @@ public class DiscordConfig {
 
     public String playerHeadsUrl = "http://cravatar.eu/avatar/{uuid}/400.png";
     public boolean enableWebhook = false;
-    public String webhookUrl = "";
     public boolean enableAccountLinking = false;
     public boolean forceLinking = false;
     public boolean useDiscordData = false;

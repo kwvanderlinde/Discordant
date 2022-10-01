@@ -1,10 +1,10 @@
-package com.kwvanderlinde.discordant;
+package com.kwvanderlinde.discordant.mc;
 
-import com.kwvanderlinde.discordant.config.ConfigManager;
-import com.kwvanderlinde.discordant.config.LinkedProfile;
-import com.kwvanderlinde.discordant.discord.DiscordConfig;
-import com.kwvanderlinde.discordant.discord.Discordant;
-import com.kwvanderlinde.discordant.discord.VerificationData;
+import com.kwvanderlinde.discordant.core.config.ConfigManager;
+import com.kwvanderlinde.discordant.core.config.LinkedProfile;
+import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.VerificationData;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import net.minecraft.ChatFormatting;
@@ -62,7 +62,7 @@ public class ProfileLinkCommand {
         String id = source.getPlayerOrException().getStringUUID();
         LinkedProfile profile = ConfigManager.getLinkedProfile(id);
         if (profile != null) {
-            Discordant.linkedPlayersByDiscordId.remove(profile.discordId);
+            Discordant.linkedPlayersByDiscordId.remove(profile.discordId());
             Discordant.linkedPlayers.remove(id);
             Files.delete(Paths.get(String.format("./config/discordant/linked-profiles/%s.json", id)));
             source.sendSuccess(Component.literal(Discordant.config.codeUnlinkMsg), false);

@@ -1,7 +1,7 @@
-package com.kwvanderlinde.discordant.mixin;
+package com.kwvanderlinde.discordant.mc.mixin;
 
-import com.kwvanderlinde.discordant.IServerPlayer;
-import com.kwvanderlinde.discordant.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.IServerPlayer;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;

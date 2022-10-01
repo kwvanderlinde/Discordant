@@ -1,6 +1,6 @@
-package com.kwvanderlinde.discordant.discord.logging;
+package com.kwvanderlinde.discordant.core.logging;
 
-import com.kwvanderlinde.discordant.discord.Discordant;
+import com.kwvanderlinde.discordant.core.discord.DiscordApi;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;
@@ -12,13 +12,16 @@ import java.text.SimpleDateFormat;
 
 public class DiscordantAppender extends AbstractAppender {
     private final SimpleDateFormat timestampFormatter = new SimpleDateFormat("hh:mm:ss");
+    private final DiscordApi discordApi;
 
-    public DiscordantAppender(Level level) {
+    public DiscordantAppender(Level level, DiscordApi discordApi) {
         super("Discordant",
               new LevelMatchFilter.Builder().setLevel(level).build(),
               new MessageLayout(),
               false,
               Property.EMPTY_ARRAY);
+
+        this.discordApi = discordApi;
 
         this.start();
     }
@@ -30,6 +33,6 @@ public class DiscordantAppender extends AbstractAppender {
                                   event.getThreadName(),
                                   event.getLevel(),
                                   event.getMessage().getFormattedMessage());
-        Discordant.postConsoleMessage(sb);
+        discordApi.postConsoleMessage(sb);
     }
 }

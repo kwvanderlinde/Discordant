@@ -1,10 +1,10 @@
-package com.kwvanderlinde.discordant.mixin;
+package com.kwvanderlinde.discordant.mc.mixin;
 
-import com.kwvanderlinde.discordant.config.ConfigManager;
-import com.kwvanderlinde.discordant.config.LinkedProfile;
-import com.kwvanderlinde.discordant.discord.DiscordConfig;
-import com.kwvanderlinde.discordant.discord.Discordant;
-import com.kwvanderlinde.discordant.discord.VerificationData;
+import com.kwvanderlinde.discordant.core.config.ConfigManager;
+import com.kwvanderlinde.discordant.core.config.LinkedProfile;
+import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
+import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.VerificationData;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.Connection;
@@ -37,7 +37,7 @@ public class PlayerListMixins {
         Discordant.logoutMsg(serverPlayer.getScoreboardName(), serverPlayer.getStringUUID());
         LinkedProfile profile = Discordant.linkedPlayers.get(serverPlayer.getStringUUID());
         if (profile != null) {
-            Discordant.linkedPlayersByDiscordId.remove(profile.discordId);
+            Discordant.linkedPlayersByDiscordId.remove(profile.discordId());
             Discordant.linkedPlayers.remove(serverPlayer.getGameProfile().getId().toString());
         }
     }
@@ -51,7 +51,7 @@ public class PlayerListMixins {
             profile = ConfigManager.getLinkedProfile(uuid);
             if (profile != null) {
                 Discordant.linkedPlayers.put(uuid, profile);
-                Discordant.linkedPlayersByDiscordId.put(profile.discordId, gameProfile.getName());
+                Discordant.linkedPlayersByDiscordId.put(profile.discordId(), gameProfile.getName());
             }
         }
         if (cfg.enableAccountLinking && cfg.forceLinking && profile == null) {
