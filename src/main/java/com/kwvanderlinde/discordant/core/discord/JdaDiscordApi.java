@@ -36,7 +36,7 @@ public class JdaDiscordApi implements DiscordApi {
         jda = JDABuilder.createDefault(config.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
-                        .enableIntents(GatewayIntent.GUILD_MEMBERS)
+                        .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
                         .addEventListeners(new Object[]{new DiscordListener(this)})
                         .build();
         jda.awaitReady();
