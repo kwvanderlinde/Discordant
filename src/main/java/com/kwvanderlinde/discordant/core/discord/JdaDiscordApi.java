@@ -30,14 +30,14 @@ public class JdaDiscordApi implements DiscordApi {
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull DiscordConfig config) throws InterruptedException {
+    public JdaDiscordApi(@Nonnull DiscordConfig config, @Nonnull LinkedProfileRepository linkedProfileRepository) throws InterruptedException {
         this.config = config;
 
         jda = JDABuilder.createDefault(config.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS)
-                        .addEventListeners(new Object[]{new DiscordListener(this)})
+                        .addEventListeners(new Object[]{new DiscordListener(this, linkedProfileRepository)})
                         .build();
         jda.awaitReady();
 

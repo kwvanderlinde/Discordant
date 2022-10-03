@@ -1,13 +1,10 @@
 package com.kwvanderlinde.discordant.mc.discord;
 
+import com.kwvanderlinde.discordant.core.discord.*;
 import com.kwvanderlinde.discordant.mc.DiscordantCommands;
 import com.kwvanderlinde.discordant.mc.OnPlayerMessageEvent;
 import com.kwvanderlinde.discordant.mc.ProfileLinkCommand;
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
-import com.kwvanderlinde.discordant.core.config.LinkedProfile;
-import com.kwvanderlinde.discordant.core.discord.DiscordApi;
-import com.kwvanderlinde.discordant.core.discord.JdaDiscordApi;
-import com.kwvanderlinde.discordant.core.discord.NullDiscordApi;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.mc.language.ServerLanguage;
 import kong.unirest.Unirest;
@@ -18,6 +15,7 @@ import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.locale.Language;
 import net.minecraft.network.chat.MutableComponent;
@@ -38,10 +36,12 @@ import java.util.regex.Pattern;
 public class Discordant implements DedicatedServerModInitializer {
     public static DiscordApi discordApi = new NullDiscordApi();
     public static DiscordConfig config;
+    public static LinkedProfileRepository linkedProfileRepository = new NullLinkedProfileRepository();
     public static DiscordantAppender logAppender;
     public static DedicatedServer server;
     public static Logger logger = LogManager.getLogger("Discordant");
 
+    // TODO Fold link players into the LinkedProfile repository somehow.
     public static HashMap<String, LinkedProfile> linkedPlayers = new HashMap<>();
     public static HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
     public static HashMap<Integer, VerificationData> pendingPlayers = new HashMap<>();
@@ -53,22 +53,32 @@ public class Discordant implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        ConfigManager manager = new ConfigManager();
+        ConfigManager manager = new ConfigManager(FabricLoader.getInstance().getConfigDir().resolve("discordant"));
         try {
-            manager.craftPaths();
-            manager.genDiscordLinkSettings();
+            manager.ensureConfigStructure();
             Discordant.config = manager.readDiscordLinkSettings();
             Discordant.config.setup();
         }
+        // TODO Hard failure on some of these exceptions. And by "hard" I mean don't initialize
+        //  most mod functionality.
         catch (IOException e) {
             e.printStackTrace();
         }
+
+        linkedProfileRepository = new ConfigProfileRepository(manager.getConfigRoot().resolve("linked-profiles"));
+
         try {
-            initialize(manager);
+            discordApi = new JdaDiscordApi(config, linkedProfileRepository);
+
+            logAppender = new DiscordantAppender(Level.INFO, discordApi);
+            ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
+
+            botName = discordApi.getBotName();
         }
-        catch (LoginException | InterruptedException e) {
+        catch (InterruptedException e) {
             e.printStackTrace();
         }
+
         language.loadAllLanguagesIncludingModded(config.targetLocalization, config.isBidirectional);
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             DiscordantCommands.register(dispatcher);
@@ -98,15 +108,6 @@ public class Discordant implements DedicatedServerModInitializer {
             }
         });
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> shutdown());
-    }
-
-    public static void initialize(ConfigManager manager) throws LoginException, InterruptedException {
-        discordApi = new JdaDiscordApi(config);
-
-        logAppender = new DiscordantAppender(Level.INFO, discordApi);
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
-
-        botName = discordApi.getBotName();
     }
 
     public static void onPlayerMessage(ServerPlayer player, String msg, MutableComponent textComponent) {

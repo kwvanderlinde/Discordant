@@ -1,7 +1,7 @@
 package com.kwvanderlinde.discordant.mc;
 
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
-import com.kwvanderlinde.discordant.core.config.LinkedProfile;
+import com.kwvanderlinde.discordant.core.discord.LinkedProfile;
 import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
 import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import com.kwvanderlinde.discordant.mc.discord.VerificationData;
@@ -60,11 +60,11 @@ public class ProfileLinkCommand {
 
     private static int unlink(CommandSourceStack source) throws CommandSyntaxException, IOException {
         String id = source.getPlayerOrException().getStringUUID();
-        LinkedProfile profile = ConfigManager.getLinkedProfile(id);
+        LinkedProfile profile = Discordant.linkedProfileRepository.get(id);
         if (profile != null) {
             Discordant.linkedPlayersByDiscordId.remove(profile.discordId());
             Discordant.linkedPlayers.remove(id);
-            Files.delete(Paths.get(String.format("./config/discordant/linked-profiles/%s.json", id)));
+            Discordant.linkedProfileRepository.delete(id);
             source.sendSuccess(Component.literal(Discordant.config.codeUnlinkMsg), false);
         }
         else {
