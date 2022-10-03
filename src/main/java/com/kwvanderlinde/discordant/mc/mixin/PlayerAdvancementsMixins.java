@@ -1,6 +1,6 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
-import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerPlayer;
@@ -17,6 +17,6 @@ public class PlayerAdvancementsMixins {
 
     @Inject(method = "award", at = @At(value = "INVOKE", target = "net/minecraft/server/players/PlayerList.broadcastSystemMessage (Lnet/minecraft/network/chat/Component;Lnet/minecraft/resources/ResourceKey;)V", shift = At.Shift.AFTER))
     private void sendAdvancement(Advancement advancement, String string, CallbackInfoReturnable<Boolean> cir) {
-        Discordant.sendAdvancement(this.player.getScoreboardName(), advancement, this.player.getStringUUID());
+        PlayerEvents.ADVANCMENT_AWARDED.invoker().advancementAwarded(this.player, advancement);
     }
 }

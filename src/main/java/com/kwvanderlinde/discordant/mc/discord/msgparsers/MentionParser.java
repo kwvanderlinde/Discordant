@@ -1,7 +1,7 @@
 package com.kwvanderlinde.discordant.mc.discord.msgparsers;
 
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import net.minecraft.ChatFormatting;
@@ -24,13 +24,22 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class MentionParser implements MsgParser {
-    private final Pattern pattern = Pattern.compile("(?<=!@).+?(?=!@|$|\\s)");
+    // TODO Fix mentioning of minecraft names ("!@MyName") so that:
+    //  1. The bot can actually receive the literal message. "!@MyName" is turned into !<@someidhere>. We could instead use "@!" or a different prefix altogether, like "+".
+    //  2. The message sent to the minecraft client does not include the mention prefix as it does now. Instead it should just contain the coloured username.
+    //  Other changes:
+    //  1. Color all usernames (sender and mention) according to role color.
+    //  2. Do not prefix sender with role, but apply it in hover text.
+    //  3. Instead of the prefix "[Discord] XXX >> message", phrase it like "[Discord] user XXX say" and italicize the lead up.
+
+    private final Pattern pattern = Pattern.compile("(?<=!\\+).+?(?=!\\+|$|\\s)");
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
     public void handleChat(MessageReceivedEvent e, DedicatedServer server, String msg) {
+        System.out.printf("Handling chat message: %s%n", msg);
         Member member = e.getMember();
         Set<String> playerNames = new HashSet<>();
-        if (msg.contains("!@")) {
+        if (msg.contains("!+")) {
             playerNames = pattern.matcher(msg).results().map(matchResult -> matchResult.group(0).toLowerCase()).collect(Collectors.toSet());
         }
         if (msg.contains("<@")) {
@@ -39,10 +48,10 @@ public class MentionParser implements MsgParser {
                 if (s.startsWith("!")) {
                     s = s.substring(1);
                 }
-                String name = Discordant.linkedPlayersByDiscordId.get(s);
+                String name = DiscordantModInitializer.core.getLinkedPlayerNameForDiscordId(s);
                 if (name != null) {
                     playerNames.add(name.toLowerCase());
-                    msg = msg.replaceAll("<(@.|@)" + s + ">", "!@" + name);
+                    msg = msg.replaceAll("<(@.|@)" + s + ">", "@" + name);
                 }
                 else {
                     Member m = e.getGuild().getMemberById(s);
@@ -69,7 +78,9 @@ public class MentionParser implements MsgParser {
                             player.sendSystemMessage(cp);
                         }
                         else {
-                            player.sendSystemMessage(cp2.append(Component.literal(" >> " + msg.replaceAll("(?i)!@" + player.getScoreboardName(), "§a$0§r")).withStyle(ChatFormatting.WHITE)));
+                            final var name = player.getScoreboardName();
+                            final var replacement = msg.replaceAll("(?i)!\\+" + name, "§a$0§r");
+                            player.sendSystemMessage(cp2.append(Component.literal(" >> " + replacement).withStyle(ChatFormatting.WHITE)));
                             if (((IServerPlayer) player).getNotifyState()) {
                                 player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING, SoundSource.MASTER, 1.0F, 1.0F);
                             }

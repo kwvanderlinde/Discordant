@@ -3,7 +3,7 @@ package com.kwvanderlinde.discordant.mc.language;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModMetadata;
@@ -37,7 +37,7 @@ import java.util.Map;
 public class ServerLanguage extends Language {
     private Map<String, String> storage;
     private boolean isBidirectional = false;
-    private static final Logger logger = Discordant.logger;
+    private static final Logger logger = DiscordantModInitializer.logger;
     private static final HashSet<String> excludeModIDs = new HashSet<>();
 
     public ServerLanguage() {

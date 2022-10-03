@@ -18,6 +18,7 @@ public class DefaultParser implements MsgParser {
         Style s = cp.getStyle();
         Member member = e.getMember();
         if (msg.contains("<@")) {
+            // TODO Always render discord Ids as users.
             msg = msg.replaceAll("<@.*?>", "");
             if (msg.isEmpty()) {
                 return;

@@ -1,7 +1,7 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -33,7 +33,7 @@ public abstract class ServerPlayerMixins extends Player implements IServerPlayer
 
     @Inject(method = "die", at = @At("TAIL"))
     public void sendDeathMsg(DamageSource damageSource, CallbackInfo ci) {
-        Discordant.sendDeathMsg(this.getScoreboardName(), damageSource.getLocalizedDeathMessage((ServerPlayer) (Object) this).getString(), this.getStringUUID());
+        PlayerEvents.DEATH.invoker().afterDeath((ServerPlayer) (Object) this, damageSource);
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))

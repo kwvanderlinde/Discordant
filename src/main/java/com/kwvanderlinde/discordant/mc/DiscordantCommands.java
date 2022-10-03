@@ -1,6 +1,6 @@
 package com.kwvanderlinde.discordant.mc;
 
-import com.kwvanderlinde.discordant.mc.discord.Discordant;
+import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -20,7 +20,7 @@ public class DiscordantCommands {
     private static int switchNotifySoundState(CommandSourceStack source, boolean state) throws CommandSyntaxException {
         IServerPlayer player = (IServerPlayer) source.getPlayerOrException();
         player.setNotifyState(state);
-        source.sendSuccess(Component.literal(Discordant.config.mentionState.replaceAll("\\{state}", String.valueOf(state))), false);
+        source.sendSuccess(Component.literal(DiscordantModInitializer.core.getConfig().mentionState.replaceAll("\\{state}", String.valueOf(state))), false);
         return 0;
     }
 }
