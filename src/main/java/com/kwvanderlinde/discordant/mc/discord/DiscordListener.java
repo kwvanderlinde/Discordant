@@ -1,8 +1,9 @@
 package com.kwvanderlinde.discordant.mc.discord;
 
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
-import com.kwvanderlinde.discordant.core.config.LinkedProfile;
+import com.kwvanderlinde.discordant.core.discord.LinkedProfile;
 import com.kwvanderlinde.discordant.core.discord.DiscordApi;
+import com.kwvanderlinde.discordant.core.discord.LinkedProfileRepository;
 import com.kwvanderlinde.discordant.mc.discord.msgparsers.DefaultParser;
 import com.kwvanderlinde.discordant.mc.discord.msgparsers.MentionParser;
 import com.kwvanderlinde.discordant.mc.discord.msgparsers.MsgParser;
@@ -20,12 +21,17 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
 
+// TODO Delegate as much as possible to core logic rather than embedding it here. E.g., definitely
+//  filling parameters from message configs is core logic, which includes looking up potential
+//  linked profiles.
 public class DiscordListener extends ListenerAdapter {
     private final DiscordApi discordApi;
+    private final LinkedProfileRepository linkedProfileRepository;
     private final MsgParser chatHandler;
 
-    public DiscordListener(DiscordApi discordApi) {
+    public DiscordListener(DiscordApi discordApi, LinkedProfileRepository linkedProfileRepository) {
         this.discordApi = discordApi;
+        this.linkedProfileRepository = linkedProfileRepository;
         if (Discordant.config.enableMentions) {
             chatHandler = new MentionParser();
         }
@@ -99,7 +105,7 @@ public class DiscordListener extends ListenerAdapter {
                 if (!Files.exists(Paths.get(String.format("./config/discordant/linked-profiles/%s.json", id)))) {
                     String discordId = e.getAuthor().getId();
                     LinkedProfile profile = new LinkedProfile(data.name(), id, discordId);
-                    ConfigManager.saveLinkedProfile(profile);
+                    linkedProfileRepository.put(profile);
                     Discordant.pendingPlayersUUID.remove(id);
                     Discordant.pendingPlayers.remove(code);
                     if (!Discordant.config.forceLinking) {
@@ -114,7 +120,7 @@ public class DiscordListener extends ListenerAdapter {
                     Discordant.logger.info(Discordant.config.successLinkDiscordMsg.replaceAll("\\{username}", data.name()).replaceAll("\\{discordname}", e.getAuthor().getName()));
                 }
                 else {
-                    LinkedProfile profile = ConfigManager.getLinkedProfile(id);
+                    LinkedProfile profile = linkedProfileRepository.get(id);
                     final var guild = discordApi.getGuild();
                     if (profile != null && guild != null) {
                         Member m = guild.getMemberById(profile.discordId());

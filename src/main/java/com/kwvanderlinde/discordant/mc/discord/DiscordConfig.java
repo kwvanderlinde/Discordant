@@ -46,6 +46,7 @@ public class DiscordConfig {
     public transient String cLinkMsg2 = "";
 
     public void setup() {
+        // TODO I am not a fan of my config objects having much logic in them, definitely not a required extra method call!
         String msg = commandLinkMsg;
         int i = msg.indexOf("{code}");
         if (i != -1) {

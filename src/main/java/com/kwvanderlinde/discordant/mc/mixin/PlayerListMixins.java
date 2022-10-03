@@ -1,7 +1,7 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
-import com.kwvanderlinde.discordant.core.config.LinkedProfile;
+import com.kwvanderlinde.discordant.core.discord.LinkedProfile;
 import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
 import com.kwvanderlinde.discordant.mc.discord.Discordant;
 import com.kwvanderlinde.discordant.mc.discord.VerificationData;
@@ -48,7 +48,7 @@ public class PlayerListMixins {
         String uuid = gameProfile.getId().toString();
         LinkedProfile profile = null;
         if (cfg.enableAccountLinking) {
-            profile = ConfigManager.getLinkedProfile(uuid);
+            profile = Discordant.linkedProfileRepository.get(uuid);
             if (profile != null) {
                 Discordant.linkedPlayers.put(uuid, profile);
                 Discordant.linkedPlayersByDiscordId.put(profile.discordId(), gameProfile.getName());
