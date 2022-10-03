@@ -1,6 +1,6 @@
 package com.kwvanderlinde.discordant.core.logging;
 
-import com.kwvanderlinde.discordant.core.discord.DiscordApi;
+import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.core.LogEvent;
 import org.apache.logging.log4j.core.appender.AbstractAppender;

@@ -6,8 +6,8 @@
   "mixins": [
     "ChatMixins",
     "PlayerAdvancementsMixins",
-    "PlayerListMixins",
-    "ServerPlayerMixins"
+    "ServerPlayerMixins",
+    "ServerLoginPacketListenerImpl_GameProfileAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

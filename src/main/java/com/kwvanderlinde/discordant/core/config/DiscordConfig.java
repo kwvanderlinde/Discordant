@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.mc.discord;
+package com.kwvanderlinde.discordant.core.config;
 
 public class DiscordConfig {
     public String token = "";
@@ -40,8 +40,6 @@ public class DiscordConfig {
 
     public int config_version = 1;
 
-    public transient String vDisconnectMsg1;
-    public transient String vDisconnectMsg2 = "";
     public transient String cLinkMsg1;
     public transient String cLinkMsg2 = "";
 
@@ -55,16 +53,6 @@ public class DiscordConfig {
         }
         else {
             cLinkMsg1 = msg;
-        }
-
-        String msg2 = verificationDisconnect;
-        int j = msg2.indexOf("{code}");
-        if (j != -1) {
-            vDisconnectMsg1 = msg2.substring(0, j);
-            vDisconnectMsg2 = msg2.substring(j + 6);
-        }
-        else {
-            vDisconnectMsg1 = msg2;
         }
     }
 }

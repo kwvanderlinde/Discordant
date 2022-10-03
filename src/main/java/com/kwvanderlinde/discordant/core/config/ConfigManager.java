@@ -2,7 +2,6 @@ package com.kwvanderlinde.discordant.core.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
 
 import java.io.File;
 import java.io.FileNotFoundException;

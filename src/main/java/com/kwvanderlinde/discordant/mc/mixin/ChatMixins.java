@@ -1,6 +1,6 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
-import com.kwvanderlinde.discordant.mc.OnPlayerMessageEvent;
+import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.PlayerChatMessage;
@@ -23,6 +23,6 @@ public abstract class ChatMixins {
     private void onPlayerMessageEvent(FilteredText<PlayerChatMessage> filteredText, CallbackInfo ci) {
         String msg = filteredText.raw().signedContent().getString();
         MutableComponent text = Component.translatable("chat.type.text", this.player.getDisplayName(), msg);
-        OnPlayerMessageEvent.EVENT.invoker().onMessage(player, msg, text);
+        PlayerEvents.CHAT_MESSAGE_SENT.invoker().onMessage(player, msg, text);
     }
 }

@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.core.discord;
+package com.kwvanderlinde.discordant.core.discord.linkedprofiles;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -7,6 +7,7 @@ import org.jetbrains.annotations.Nullable;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 public class ConfigProfileRepository implements LinkedProfileRepository {
     private final Path profileDirectory;
@@ -15,13 +16,12 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
         this.profileDirectory = profileDirectory;
     }
 
-    private Path getProfilePath(String uuid) {
-        return this.profileDirectory.resolve(uuid + "json");
+    private Path getProfilePath(UUID uuid) {
+        return this.profileDirectory.resolve(uuid.toString() + "json");
     }
 
     @Override
-    public @Nullable LinkedProfile get(String uuid) {
-        // TODO Use a type for `uuid` that is definitely path-safe.
+    public @Nullable LinkedProfile get(UUID uuid) {
         final var path = getProfilePath(uuid);
         if (Files.exists(path)) {
             try (final var reader = new FileReader(path.toFile())) {
@@ -62,7 +62,7 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
     }
 
     @Override
-    public void delete(String uuid) {
+    public void delete(UUID uuid) {
         final var path = getProfilePath(uuid);
         final var deleted = path.toFile().delete();
         if (!deleted) {

@@ -1,8 +1,8 @@
-package com.kwvanderlinde.discordant.core.discord;
+package com.kwvanderlinde.discordant.core.discord.api;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import com.kwvanderlinde.discordant.mc.discord.DiscordConfig;
+import com.kwvanderlinde.discordant.core.config.DiscordConfig;
 import com.kwvanderlinde.discordant.mc.discord.DiscordListener;
 import kong.unirest.Unirest;
 import net.dv8tion.jda.api.JDA;
@@ -30,14 +30,14 @@ public class JdaDiscordApi implements DiscordApi {
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull DiscordConfig config, @Nonnull LinkedProfileRepository linkedProfileRepository) throws InterruptedException {
+    public JdaDiscordApi(@Nonnull DiscordConfig config) throws InterruptedException {
         this.config = config;
 
         jda = JDABuilder.createDefault(config.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
-                        .enableIntents(GatewayIntent.GUILD_MEMBERS)
-                        .addEventListeners(new Object[]{new DiscordListener(this, linkedProfileRepository)})
+                        .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
+                        .addEventListeners(new Object[]{new DiscordListener(this, config)})
                         .build();
         jda.awaitReady();
 

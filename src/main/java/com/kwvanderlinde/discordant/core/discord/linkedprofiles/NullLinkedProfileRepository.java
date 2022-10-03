@@ -1,10 +1,12 @@
-package com.kwvanderlinde.discordant.core.discord;
+package com.kwvanderlinde.discordant.core.discord.linkedprofiles;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.UUID;
+
 public class NullLinkedProfileRepository implements LinkedProfileRepository {
     @Override
-    public @Nullable LinkedProfile get(String uuid) {
+    public @Nullable LinkedProfile get(UUID uuid) {
         return null;
     }
 
@@ -13,6 +15,6 @@ public class NullLinkedProfileRepository implements LinkedProfileRepository {
     }
 
     @Override
-    public void delete(String uuid) {
+    public void delete(UUID uuid) {
     }
 }

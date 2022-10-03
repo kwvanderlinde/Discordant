@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.core.discord;
+package com.kwvanderlinde.discordant.core.discord.api;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;

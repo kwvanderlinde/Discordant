@@ -1,11 +1,13 @@
-package com.kwvanderlinde.discordant.core.discord;
+package com.kwvanderlinde.discordant.core.discord.linkedprofiles;
+
+import java.util.UUID;
 
 public class LinkedProfile {
     private final String name;
-    private final String uuid;
+    private final UUID uuid;
     private final String discordId;
 
-    public LinkedProfile(String name, String uuid, String discordId) {
+    public LinkedProfile(String name, UUID uuid, String discordId) {
         this.name = name;
         this.uuid = uuid;
         this.discordId = discordId;
@@ -15,7 +17,7 @@ public class LinkedProfile {
         return name;
     }
 
-    public String uuid() {
+    public UUID uuid() {
         return uuid;
     }
 
