@@ -52,6 +52,7 @@ public class Discordant {
 
     private final Integration minecraftIntegration;
 
+    private ServerCache serverCache;
     private DiscordApi discordApi = new NullDiscordApi();
     private DiscordConfig config;
     private LinkedProfileRepository linkedProfileRepository = new NullLinkedProfileRepository();
@@ -72,7 +73,11 @@ public class Discordant {
     public Discordant(Integration minecraftIntegration) {
         this.minecraftIntegration = minecraftIntegration;
 
-        final var manager = new ConfigManager(minecraftIntegration.getConfigRoot().resolve("discordant"));
+        final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
+
+        this.serverCache = new FileBackedServerCache(configRoot.resolve("cache"));
+
+        final var manager = new ConfigManager(configRoot);
         try {
             manager.ensureConfigStructure();
             config = manager.readDiscordLinkSettings();
@@ -87,7 +92,7 @@ public class Discordant {
         linkedProfileRepository = new ConfigProfileRepository(manager.getConfigRoot().resolve("linked-profiles"));
 
         try {
-            discordApi = new JdaDiscordApi(config);
+            discordApi = new JdaDiscordApi(config, serverCache);
 
             logAppender = new DiscordantAppender(Level.INFO, discordApi);
             ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
