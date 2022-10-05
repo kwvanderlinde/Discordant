@@ -1,6 +1,6 @@
 package com.kwvanderlinde.discordant.core.modinterfaces;
 
-import java.nio.file.Path;
+import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
 // TODO Don't name this interface after a design pattern.
 public interface Events {

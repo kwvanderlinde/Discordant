@@ -5,12 +5,13 @@ import com.kwvanderlinde.discordant.core.modinterfaces.Advancement;
 import com.kwvanderlinde.discordant.core.modinterfaces.Events;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
-import com.kwvanderlinde.discordant.core.modinterfaces.SemanticMessage;
+import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.mc.DiscordantCommands;
 import com.kwvanderlinde.discordant.mc.ProfileLinkCommand;
 import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import com.kwvanderlinde.discordant.mc.language.ServerLanguage;
+import com.kwvanderlinde.discordant.mc.messages.SemanticMessageRenderer;
 import com.kwvanderlinde.discordant.mc.mixin.ServerLoginPacketListenerImpl_GameProfileAccessor;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -122,44 +123,13 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
             });
         }
 
-        private Component renderMessage(SemanticMessage message) {
-            MutableComponent component = Component.empty();
-            message.parts().forEach(part -> {
-                if (part instanceof SemanticMessage.Part.Literal literal) {
-                    component.append(literal.text());
-                }
-                else if (part instanceof SemanticMessage.Part.VerificationCode verificationCode) {
-                    component.append(
-                            // TODO Can we add copy on click?
-                            Component.literal(verificationCode.code()).withStyle(Style.EMPTY.withColor(verificationCode.color()))
-                    );
-                }
-                else if (part instanceof SemanticMessage.Part.DiscordUser discordUser) {
-                    // TODO Use hover and copy and click to good effect. Show roles etc that way.
-                    component.append(
-                            Component.literal(discordUser.roleName() + " " + discordUser.name()).setStyle(Style.EMPTY.withColor(discordUser.color())
-                                                                                                         .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(Language.getInstance().getOrDefault("chat.copy.click") + " " + discordUser.tag()).withStyle(ChatFormatting.GREEN)))
-                                                                                                         .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, discordUser.tag()))));
-                }
-                else if (part instanceof SemanticMessage.Part.BotName botName) {
-                    component.append(
-                            Component.literal(botName.name()).withStyle(
-                                    Style.EMPTY.withColor(botName.color())
-                            )
-                    );
-                }
-            });
-            return component;
-        }
-
         @Override
         public void onPlayerJoinAttempt(PlayerJoinAttemptHandler handler) {
             ServerLoginConnectionEvents.QUERY_START.register((netHandler, server, sender, synchronizer) -> {
                 final var profile = ((ServerLoginPacketListenerImpl_GameProfileAccessor) netHandler).getGameProfile();
                 handler.joinAttempted(
                         new PlayerAdapter(profile.getId(), profile.getName()),
-                        //reason -> netHandler.disconnect(Component.literal(reason))
-                        reason -> netHandler.disconnect(renderMessage(reason))
+                        reason -> netHandler.disconnect(reason.reduce(SemanticMessageRenderer::renderMessage))
                 );
             });
         }
