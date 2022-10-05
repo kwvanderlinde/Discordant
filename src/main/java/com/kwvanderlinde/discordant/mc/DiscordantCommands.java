@@ -1,6 +1,8 @@
 package com.kwvanderlinde.discordant.mc;
 
+import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
+import com.kwvanderlinde.discordant.mc.messages.SemanticMessageRenderer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -20,7 +22,7 @@ public class DiscordantCommands {
     private static int switchNotifySoundState(CommandSourceStack source, boolean state) throws CommandSyntaxException {
         IServerPlayer player = (IServerPlayer) source.getPlayerOrException();
         player.setNotifyState(state);
-        source.sendSuccess(Component.literal(DiscordantModInitializer.core.getConfig().mentionState.replaceAll("\\{state}", String.valueOf(state))), false);
+        source.sendSuccess(new NotificationStateScope(state).instantiate(DiscordantModInitializer.core.getMessageConfig().mentionState).reduce(SemanticMessageRenderer::renderMessage), false);
         return 0;
     }
 }

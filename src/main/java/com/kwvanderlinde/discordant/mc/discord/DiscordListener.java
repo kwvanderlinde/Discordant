@@ -62,7 +62,7 @@ public class DiscordListener extends ListenerAdapter {
             }
             else if (config.enableAccountLinking && e.getChannelType() == ChannelType.PRIVATE) {
                 try {
-                    tryVerify(e, server);
+                    tryVerify(e);
                 }
                 catch (IOException ex) {
                     ex.printStackTrace();
@@ -104,7 +104,7 @@ public class DiscordListener extends ListenerAdapter {
         }
     }
 
-    private void tryVerify(MessageReceivedEvent e, DedicatedServer server) throws IOException {
+    private void tryVerify(MessageReceivedEvent e) throws IOException {
         final var verified = DiscordantModInitializer.core.verifyLinkedProfile(e.getChannel(), e.getAuthor(), e.getMessage().getContentRaw());
     }
 

@@ -1,13 +1,18 @@
-package com.kwvanderlinde.discordant.core.modinterfaces;
+package com.kwvanderlinde.discordant.core.messages;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 import java.util.stream.Stream;
 
 public class SemanticMessage {
     private final List<Part> parts = new ArrayList<>();
 
     public SemanticMessage() {
+    }
+
+    public <T> T reduce(Function<Stream<Part>, T> reducer) {
+        return reducer.apply(this.parts());
     }
 
     public SemanticMessage append(Part part) {
@@ -40,7 +45,9 @@ public class SemanticMessage {
      *
      * This is not capable of representing an arbitrary JSON-formatted Minecraft message.
      */
-    public sealed interface Part permits Part.Literal, Part.BotName, Part.DiscordUser, Part.VerificationCode {
+    public sealed interface Part permits Part.Nil, Part.Literal, Part.BotName, Part.DiscordUser, Part.VerificationCode {
+        record Nil() implements Part {}
+
         record Literal(String text) implements Part {}
 
         record BotName(String name) implements Part {

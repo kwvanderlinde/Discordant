@@ -17,7 +17,7 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
     }
 
     private Path getProfilePath(UUID uuid) {
-        return this.profileDirectory.resolve(uuid.toString() + "json");
+        return this.profileDirectory.resolve(uuid.toString() + ".json");
     }
 
     @Override

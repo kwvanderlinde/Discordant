@@ -1,6 +1,7 @@
 package com.kwvanderlinde.discordant.core;
 
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
+import com.kwvanderlinde.discordant.core.config.ParsedMessageConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.ConfigProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
@@ -11,9 +12,13 @@ import com.kwvanderlinde.discordant.core.discord.linkedprofiles.NullLinkedProfil
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.VerificationData;
+import com.kwvanderlinde.discordant.core.messages.SemanticMessageRenderer;
+import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
+import com.kwvanderlinde.discordant.core.messages.scopes.PlayerScope;
+import com.kwvanderlinde.discordant.core.messages.scopes.ServerScope;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
-import com.kwvanderlinde.discordant.core.modinterfaces.SemanticMessage;
+import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import kong.unirest.Unirest;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
@@ -52,9 +57,11 @@ public class Discordant {
 
     private final Integration minecraftIntegration;
 
+    private @Nullable Server server;
     private ServerCache serverCache;
     private DiscordApi discordApi = new NullDiscordApi();
     private DiscordConfig config;
+    private ParsedMessageConfig messageConfig;
     private LinkedProfileRepository linkedProfileRepository = new NullLinkedProfileRepository();
     private DiscordantAppender logAppender;
 
@@ -81,13 +88,13 @@ public class Discordant {
         try {
             manager.ensureConfigStructure();
             config = manager.readDiscordLinkSettings();
-            config.setup();
         }
         // TODO Hard failure on some of these exceptions. And by "hard" I mean don't initialize
         //  most mod functionality.
         catch (IOException e) {
             e.printStackTrace();
         }
+        messageConfig = new ParsedMessageConfig(config);
 
         linkedProfileRepository = new ConfigProfileRepository(manager.getConfigRoot().resolve("linked-profiles"));
 
@@ -109,7 +116,8 @@ public class Discordant {
         }
 
         minecraftIntegration.events().onServerStarted((server) -> {
-            discordApi.postChatMessage(config.startupMsg);
+            this.server = server;
+            discordApi.postChatMessage(new ServerScope().instantiate(messageConfig.startupMsg).reduce(SemanticMessageRenderer::renderPlainText));
         });
         minecraftIntegration.events().onServerStopping((server) -> {
             shutdown();
@@ -176,10 +184,9 @@ public class Discordant {
             if (config.forceLinking && profile == null) {
                 // Profile does not exist. So send the user a code to verify with.
                 final int authCode = this.generateLinkCode(player.uuid(), player.name());
-                final var message = renderMessageTemplate(config.verificationDisconnect, Map.of(
-                        "{botname}", new SemanticMessage.Part.BotName(botName),
-                        "{code}", new SemanticMessage.Part.VerificationCode(String.valueOf(authCode))));
-
+                final var message = new PendingVerificationScope(String.valueOf(authCode), botName).instantiate(
+                        messageConfig.verificationDisconnect
+                );
                 reject.withReason(message);
             }
 
@@ -188,7 +195,11 @@ public class Discordant {
             knownPlayerIds.add(player.uuid());
 
             EmbedBuilder e = new EmbedBuilder();
-            e.setAuthor(config.joinMessage.replaceAll("\\{username}", player.name()), null, getPlayerIconUrl(player));
+            // TODO Methinks using setAuthor here is not correct!
+            // TODO Look up the linked profile and pass the corresponding discord user.
+            e.setAuthor(new PlayerScope(player, null)
+                                .instantiate(messageConfig.joinMessage)
+                                .reduce(SemanticMessageRenderer::renderPlainText), null, getPlayerIconUrl(player));
             e.setColor(Color.GREEN);
             discordApi.sendEmbed(e.build());
         });
@@ -198,7 +209,11 @@ public class Discordant {
             }
 
             EmbedBuilder e = new EmbedBuilder();
-            e.setAuthor(config.disconnectMessage.replaceAll("\\{username}", player.name()), null, getPlayerIconUrl(player));
+            // TODO Methinks using setAuthor here is not correct!
+            // TODO Look up the linked profile and pass the corresponding discord user.
+            e.setAuthor(new PlayerScope(player, null)
+                                .instantiate(messageConfig.disconnectMessage)
+                                        .reduce(SemanticMessageRenderer::renderPlainText), null, getPlayerIconUrl(player));
             e.setColor(Color.RED);
             discordApi.sendEmbed(e.build());
 
@@ -234,6 +249,10 @@ public class Discordant {
 
     public DiscordConfig getConfig() {
         return config;
+    }
+
+    public ParsedMessageConfig getMessageConfig() {
+        return messageConfig;
     }
 
     public @Nullable String getLinkedPlayerNameForDiscordId(String discordId) {
@@ -283,9 +302,16 @@ public class Discordant {
                     linkedPlayersByDiscordId.put(profile.discordId(), player.name());
                 }
             }
-            channelToRespondIn.sendMessage(config.successfulVerificationMsg
-                                               .replaceAll("\\{username}", data.name()).replaceAll("\\{uuid}", id.toString())).queue();
-            logger.info(config.successLinkDiscordMsg.replaceAll("\\{username}", data.name()).replaceAll("\\{discordname}", author.getName()));
+            final var scope = new PlayerScope(server.getPlayer(id), author);
+            final var message = scope
+                    .instantiate(messageConfig.successfulVerificationMsg)
+                    .reduce(SemanticMessageRenderer::renderPlainText);
+            channelToRespondIn.sendMessage(message).queue();
+
+            final var logMessage = scope
+                    .instantiate(messageConfig.successLinkDiscordMsg)
+                    .reduce(SemanticMessageRenderer::renderPlainText);
+            logger.info(logMessage);
             return true;
         }
         else {
@@ -294,8 +320,10 @@ public class Discordant {
             final var guild = discordApi.getGuild();
             if (profile != null && guild != null) {
                 Member m = guild.getMemberById(profile.discordId());
-                String discordName = m != null ? m.getEffectiveName() : "Unknown user";
-                channelToRespondIn.sendMessage(config.alreadyLinked.replaceAll("\\{username}", profile.name()).replaceAll("\\{discordname}", discordName)).queue();
+                final var message = new PlayerScope(server.getPlayer(profile.uuid()), m == null ? null : m.getUser())
+                        .instantiate(messageConfig.alreadyLinked)
+                        .reduce(SemanticMessageRenderer::renderPlainText);
+                channelToRespondIn.sendMessage(message).queue();
                 pendingPlayersUUID.remove(id);
                 pendingPlayers.remove(code);
             }
@@ -338,7 +366,7 @@ public class Discordant {
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
 
         discordApi.setTopic(config.shutdownTopicMsg);
-        discordApi.postChatMessage(config.serverStopMsg);
+        discordApi.postChatMessage(new ServerScope().instantiate(messageConfig.serverStopMsg).reduce(SemanticMessageRenderer::renderPlainText));
 
         // TODO Why sleep?
         try {
@@ -350,43 +378,5 @@ public class Discordant {
         discordApi.close();
         discordApi = new NullDiscordApi();
         Unirest.shutDown();
-    }
-
-    // TODO Instead of filling a string, parse the string and render the AST.
-    private SemanticMessage renderMessageTemplate(String template, Map<String, SemanticMessage.Part> variables) {
-        final var message = new SemanticMessage();
-
-        var previousIndex = 0;
-        while (true) {
-            var minIndex = Integer.MAX_VALUE;
-            int endIndex = template.length();
-            SemanticMessage.Part minPart = null;
-            for (final var entry : variables.entrySet()) {
-                var index = template.indexOf(entry.getKey(), previousIndex);
-                if (index >= 0 && index < minIndex) {
-                    minIndex = index;
-                    minPart = entry.getValue();
-                    endIndex = index + entry.getKey().length();
-                }
-            }
-
-            if (minIndex == Integer.MAX_VALUE) {
-                assert minPart == null;
-                final var remaining = template.substring(previousIndex);
-                if (!remaining.isEmpty()) {
-                    message.appendLiteral(remaining);
-                }
-                break;
-            }
-            if (minIndex != previousIndex) {
-                message.appendLiteral(template.substring(previousIndex, minIndex));
-            }
-
-            assert minPart != null;
-            message.append(minPart);
-            previousIndex = endIndex;
-        }
-
-        return message;
     }
 }
