@@ -2,6 +2,7 @@ package com.kwvanderlinde.discordant.core.discord.api;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import com.kwvanderlinde.discordant.core.ServerCache;
 import com.kwvanderlinde.discordant.core.config.DiscordConfig;
 import com.kwvanderlinde.discordant.mc.discord.DiscordListener;
 import kong.unirest.Unirest;
@@ -30,7 +31,7 @@ public class JdaDiscordApi implements DiscordApi {
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull DiscordConfig config) throws InterruptedException {
+    public JdaDiscordApi(@Nonnull DiscordConfig config, @Nonnull ServerCache cache) throws InterruptedException {
         this.config = config;
 
         jda = JDABuilder.createDefault(config.token)
@@ -56,7 +57,21 @@ public class JdaDiscordApi implements DiscordApi {
         consoleChannel = jda.getTextChannelById(config.consoleChannelId);
 
         if (config.enableWebhook && chatChannel != null) {
-            webhook = chatChannel.createWebhook("Minecraft Chat Message Forwarding").complete();
+            Webhook webhook = null;
+            var webhookId = cache.get("webhook");
+            if (webhookId != null) {
+                final var definedWebhooks = chatChannel.retrieveWebhooks().complete();
+                final var existingWebhook = definedWebhooks.stream().filter(wh -> webhookId.equals(wh.getId())).findFirst();
+                if (existingWebhook.isPresent()) {
+                    webhook = existingWebhook.get();
+                }
+            }
+            if (webhook == null) {
+                webhook = chatChannel.createWebhook("Minecraft Chat Message Forwarding").complete();
+                cache.put("webhook", webhook.getId());
+            }
+
+            this.webhook = webhook;
         }
         else {
             webhook = null;
