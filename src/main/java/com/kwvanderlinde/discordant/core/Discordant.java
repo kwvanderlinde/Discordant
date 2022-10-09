@@ -1,7 +1,7 @@
 package com.kwvanderlinde.discordant.core;
 
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
-import com.kwvanderlinde.discordant.core.config.ParsedMessageConfig;
+import com.kwvanderlinde.discordant.core.config.DiscordMessageConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.ConfigProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
@@ -10,27 +10,27 @@ import com.kwvanderlinde.discordant.core.discord.linkedprofiles.LinkedProfileRep
 import com.kwvanderlinde.discordant.core.discord.api.NullDiscordApi;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.NullLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
-import com.kwvanderlinde.discordant.core.config.DiscordConfig;
+import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.VerificationData;
-import com.kwvanderlinde.discordant.core.messages.SemanticMessageRenderer;
+import com.kwvanderlinde.discordant.core.messages.scopes.AdvancementScope;
+import com.kwvanderlinde.discordant.core.messages.scopes.ChatScope;
+import com.kwvanderlinde.discordant.core.messages.scopes.DeathScope;
+import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PlayerScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.ServerScope;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
-import kong.unirest.Unirest;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import net.minecraft.locale.Language;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.awt.Color;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -57,11 +57,9 @@ public class Discordant {
 
     private final Integration minecraftIntegration;
 
-    private @Nullable Server server;
     private ServerCache serverCache;
     private DiscordApi discordApi = new NullDiscordApi();
-    private DiscordConfig config;
-    private ParsedMessageConfig messageConfig;
+    private DiscordantConfig config;
     private LinkedProfileRepository linkedProfileRepository = new NullLinkedProfileRepository();
     private DiscordantAppender logAppender;
 
@@ -94,8 +92,6 @@ public class Discordant {
         catch (IOException e) {
             e.printStackTrace();
         }
-        messageConfig = new ParsedMessageConfig(config);
-
         linkedProfileRepository = new ConfigProfileRepository(manager.getConfigRoot().resolve("linked-profiles"));
 
         try {
@@ -116,8 +112,10 @@ public class Discordant {
         }
 
         minecraftIntegration.events().onServerStarted((server) -> {
-            this.server = server;
-            discordApi.postChatMessage(new ServerScope().instantiate(messageConfig.startupMsg).reduce(SemanticMessageRenderer::renderPlainText));
+            // TODO Attach server icon as a thumbnail or image if possible.
+            final var message = config.discord.messages.serverStart
+                    .instantiate(new ServerScope(server, config.minecraft.serverName));
+            discordApi.sendEmbed(buildMessageEmbed(message).build());
         });
         minecraftIntegration.events().onServerStopping((server) -> {
             shutdown();
@@ -130,9 +128,15 @@ public class Discordant {
             // TODO Configurable times for setting topic and expiring pending players. Actually, we
             //  don't even need to expire pending players, except to avoid stale data.
             if (tickCount % 6000 == 0) {
-                discordApi.setTopic(config.channelTopicMsg + server.getPlayerCount() + "/" + server.getMaxPlayers());
+                // Update the channel topic.
+                final var topic = config.discord.topics.channelTopic
+                        .instantiate(new ServerScope(server, config.minecraft.serverName));
+                if (topic.description != null) {
+                    discordApi.setTopic(topic.description);
+                }
             }
             if (tickCount % 1200 == 0) {
+                // Remove any expired pending verifications.
                 for (Map.Entry<Integer, VerificationData> e : pendingPlayers.entrySet()) {
                     VerificationData data = e.getValue();
                     if (currentTime > data.validUntil()) {
@@ -143,27 +147,35 @@ public class Discordant {
             }
         });
 
-        minecraftIntegration.events().onPlayerSentMessage((player, message, plainTextCompositeMessage) -> {
+        minecraftIntegration.events().onPlayerSentMessage((player, chatMessage, plainTextCompositeMessage) -> {
             if (config.enableMentions) {
-                message = parseDiscordMentions(message);
+                chatMessage = parseDiscordMentions(chatMessage);
             }
-            if (config.enableWebhook) {
+
+            final var message = config.discord.messages.playerChat
+                    .instantiate(new ChatScope(
+                            // TODO Look up the linked profile and pass the corresponding discord user.
+                            new PlayerScope(player, null, getPlayerIconUrl(player)),
+                            chatMessage
+                    ));
+            final var e = buildMessageEmbed(message);
+
+            e.setAuthor(player.name(), null, getPlayerIconUrl(player));
+            {
+                // If linking is enabled, actually use the discord details as the author.
                 final var guild = discordApi.getGuild();
-                if (config.enableAccountLinking && guild != null && config.useDiscordData) {
+                if (config.enableAccountLinking && guild != null) {
                     LinkedProfile profile = linkedPlayers.get(player.uuid());
                     if (profile != null) {
                         Member m = guild.getMemberById(profile.discordId());
                         if (m != null) {
-                            discordApi.postWebHookMsg(message, m.getEffectiveName(), m.getEffectiveAvatarUrl());
-                            return;
+                            e.setAuthor(m.getEffectiveName(), null, m.getEffectiveAvatarUrl());
                         }
                     }
                 }
-                discordApi.postWebHookMsg(message, player.name(), getPlayerIconUrl(player));
             }
-            else {
-                discordApi.postChatMessage(plainTextCompositeMessage);
-            }
+
+            discordApi.sendEmbed(e.build());
         });
 
         minecraftIntegration.events().onPlayerJoinAttempt((player, reject) -> {
@@ -184,9 +196,8 @@ public class Discordant {
             if (config.forceLinking && profile == null) {
                 // Profile does not exist. So send the user a code to verify with.
                 final int authCode = this.generateLinkCode(player.uuid(), player.name());
-                final var message = new PendingVerificationScope(String.valueOf(authCode), botName).instantiate(
-                        messageConfig.verificationDisconnect
-                );
+                final var message = config.minecraft.messages.verificationDisconnect
+                        .instantiate(new PendingVerificationScope(String.valueOf(authCode), botName));
                 reject.withReason(message);
             }
 
@@ -194,31 +205,23 @@ public class Discordant {
         minecraftIntegration.events().onPlayerJoin((player) -> {
             knownPlayerIds.add(player.uuid());
 
-            EmbedBuilder e = new EmbedBuilder();
-            // TODO Methinks using setAuthor here is not correct!
             // TODO Look up the linked profile and pass the corresponding discord user.
-            e.setAuthor(new PlayerScope(player, null)
-                                .instantiate(messageConfig.joinMessage)
-                                .reduce(SemanticMessageRenderer::renderPlainText), null, getPlayerIconUrl(player));
-            e.setColor(Color.GREEN);
-            discordApi.sendEmbed(e.build());
+            final var message = config.discord.messages.playerJoin
+                    .instantiate(new PlayerScope(player, null, getPlayerIconUrl(player)));
+
+            discordApi.sendEmbed(buildMessageEmbed(message).build());
         });
         minecraftIntegration.events().onPlayerDisconnect(player -> {
             if (!knownPlayerIds.contains(player.uuid())) {
                 return;
             }
 
-            EmbedBuilder e = new EmbedBuilder();
-            // TODO Methinks using setAuthor here is not correct!
             // TODO Look up the linked profile and pass the corresponding discord user.
-            e.setAuthor(new PlayerScope(player, null)
-                                .instantiate(messageConfig.disconnectMessage)
-                                        .reduce(SemanticMessageRenderer::renderPlainText), null, getPlayerIconUrl(player));
-            e.setColor(Color.RED);
-            discordApi.sendEmbed(e.build());
+            final var message = config.discord.messages.playerLeave
+                    .instantiate(new PlayerScope(player, null, getPlayerIconUrl(player)));
+            discordApi.sendEmbed(buildMessageEmbed(message).build());
 
             knownPlayerIds.remove(player.uuid());
-
             // Remove in-memory profile linking. Will be reloaded next login if enabled.
             LinkedProfile profile = linkedPlayers.get(player.uuid());
             if (profile != null) {
@@ -226,33 +229,35 @@ public class Discordant {
                 linkedPlayers.remove(player.uuid());
             }
         });
-        minecraftIntegration.events().onPlayerDeath((player, message) -> {
-            EmbedBuilder e = new EmbedBuilder();
-            e.setAuthor(message, null, getPlayerIconUrl(player));
-            e.setColor(Color.RED);
-            discordApi.sendEmbed(e.build());
+        minecraftIntegration.events().onPlayerDeath((player, deathMessage) -> {
+            final var message = config.discord.messages.playerDeath
+                    .instantiate(new DeathScope(
+                            new PlayerScope(player, null, getPlayerIconUrl(player)),
+                            deathMessage
+                    ));
+            discordApi.sendEmbed(buildMessageEmbed(message).build());
         });
         minecraftIntegration.events().onPlayerAdvancement((player, advancement) -> {
-            EmbedBuilder e = new EmbedBuilder();
-            e.setAuthor(String.format(Language.getInstance().getOrDefault("chat.type.advancement." + advancement.name()), player.name(), advancement.title()), null, getPlayerIconUrl(player));
-            if (config.appendAdvancementDescription) {
-                e.setDescription(String.format("** %s **", advancement.description()));
-            }
-            e.setColor(12524269);
-            discordApi.sendEmbed(e.build());
+            // TODO Look up the linked profile and pass the corresponding discord user.
+            final var message = config.discord.messages.playerAdvancement
+                    .instantiate(new AdvancementScope(
+                            new PlayerScope(player, null, getPlayerIconUrl(player)),
+                            advancement
+                    ));
+            discordApi.sendEmbed(buildMessageEmbed(message).build());
         });
+    }
+
+    public Server getServer() {
+        return minecraftIntegration.getServer();
     }
 
     public String getBotName() {
         return botName;
     }
 
-    public DiscordConfig getConfig() {
+    public DiscordantConfig getConfig() {
         return config;
-    }
-
-    public ParsedMessageConfig getMessageConfig() {
-        return messageConfig;
     }
 
     public @Nullable String getLinkedPlayerNameForDiscordId(String discordId) {
@@ -291,7 +296,7 @@ public class Discordant {
         // TODO Avoid filesystem access here, and rely on the repository as needed.
         if (!Files.exists(Paths.get(String.format("./config/discordant/linked-profiles/%s.json", id.toString())))) {
             // Profile entry does not exist yet. Create it.
-            LinkedProfile profile = new LinkedProfile(data.name(), id, author.getId());
+            final var profile = new LinkedProfile(data.name(), id, author.getId());
             linkedProfileRepository.put(profile);
             pendingPlayersUUID.remove(id);
             pendingPlayers.remove(code);
@@ -302,15 +307,25 @@ public class Discordant {
                     linkedPlayersByDiscordId.put(profile.discordId(), player.name());
                 }
             }
-            final var scope = new PlayerScope(server.getPlayer(id), author);
-            final var message = scope
-                    .instantiate(messageConfig.successfulVerificationMsg)
-                    .reduce(SemanticMessageRenderer::renderPlainText);
-            channelToRespondIn.sendMessage(message).queue();
+            final var player = new Player() {
+                @Override
+                public UUID uuid() {
+                    return profile.uuid();
+                }
 
-            final var logMessage = scope
-                    .instantiate(messageConfig.successLinkDiscordMsg)
-                    .reduce(SemanticMessageRenderer::renderPlainText);
+                @Override
+                public String name() {
+                    return profile.name();
+                }
+            };
+            final var message = config.discord.messages.successfulVerification
+                    .instantiate(new PlayerScope(player, author, getPlayerIconUrl(player)));
+            discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
+
+            final var logMessage = String.format("Successfully linked discord account %s to minecraft account %s (%s)",
+                                                 profile.discordId(),
+                                                 profile.name(),
+                                                 profile.uuid().toString());
             logger.info(logMessage);
             return true;
         }
@@ -320,10 +335,10 @@ public class Discordant {
             final var guild = discordApi.getGuild();
             if (profile != null && guild != null) {
                 Member m = guild.getMemberById(profile.discordId());
-                final var message = new PlayerScope(server.getPlayer(profile.uuid()), m == null ? null : m.getUser())
-                        .instantiate(messageConfig.alreadyLinked)
-                        .reduce(SemanticMessageRenderer::renderPlainText);
-                channelToRespondIn.sendMessage(message).queue();
+                final var player = minecraftIntegration.getServer().getPlayer(profile.uuid());
+                final var message = config.discord.messages.alreadyLinked
+                        .instantiate(new PlayerScope(player, m == null ? null : m.getUser(), getPlayerIconUrl(player)));
+                discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
                 pendingPlayersUUID.remove(id);
                 pendingPlayers.remove(code);
             }
@@ -340,6 +355,23 @@ public class Discordant {
             return true;
         }
         return false;
+    }
+
+    public static EmbedBuilder buildMessageEmbed(DiscordMessageConfig<NilScope> config) {
+        final var e = new EmbedBuilder();
+        if (config.title != null) {
+            e.setTitle(config.title);
+        }
+        if (config.color != null) {
+            e.setColor(config.color.getRGB());
+        }
+        if (config.thumbnail != null) {
+            e.setThumbnail(config.thumbnail);
+        }
+        if (config.description != null) {
+            e.setDescription(config.description);
+        }
+        return e;
     }
 
     private String parseDiscordMentions(String msg) {
@@ -359,14 +391,29 @@ public class Discordant {
     }
 
     private String getPlayerIconUrl(Player player) {
-        return config.playerHeadsUrl.replaceAll("\\{username}", player.name()).replaceAll("\\{uuid}", player.uuid().toString());
+        final var result = config.playerHeadsUrl
+                .replaceAll("\\{username}", player.name())
+                .replaceAll("\\{uuid}", player.uuid().toString())
+                .replaceAll("\\{time}", String.valueOf(currentTime));
+        return result;
     }
 
     private void shutdown() {
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
 
-        discordApi.setTopic(config.shutdownTopicMsg);
-        discordApi.postChatMessage(new ServerScope().instantiate(messageConfig.serverStopMsg).reduce(SemanticMessageRenderer::renderPlainText));
+        {
+            // Update the channel topic.
+            final var topic = config.discord.topics.shutdownTopic
+                    .instantiate(new ServerScope(minecraftIntegration.getServer(), config.minecraft.serverName));
+            if (topic.description != null) {
+                discordApi.setTopic(topic.description);
+            }
+        }
+        {
+            final var message = config.discord.messages.serverStop
+                    .instantiate(new ServerScope(minecraftIntegration.getServer(), config.minecraft.serverName));
+            discordApi.sendEmbed(buildMessageEmbed(message).build());
+        }
 
         // TODO Why sleep?
         try {
@@ -377,6 +424,5 @@ public class Discordant {
         }
         discordApi.close();
         discordApi = new NullDiscordApi();
-        Unirest.shutDown();
     }
 }

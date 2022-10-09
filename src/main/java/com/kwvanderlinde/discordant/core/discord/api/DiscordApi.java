@@ -26,12 +26,9 @@ public interface DiscordApi extends AutoCloseable {
 
     void sendEmbed(@Nonnull MessageEmbed e);
 
+    void sendEmbed(@Nonnull MessageChannel ch, @Nonnull MessageEmbed e);
+
     void postConsoleMessage(@Nonnull String msg);
-
-    void postChatMessage(@Nonnull String msg);
-
-    // TODO Have a single method for sending message. Webhooks will be used if enabled and supported.
-    void postWebHookMsg(@Nonnull String msg, @Nonnull String username, @Nonnull String avatarUrl);
 
     void setTopic(@Nonnull String msg);
 }

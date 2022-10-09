@@ -1,6 +1,7 @@
 package com.kwvanderlinde.discordant.core.modinterfaces;
 
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public interface Server {
     int getTickCount();
@@ -10,4 +11,8 @@ public interface Server {
     int getMaxPlayers();
 
     Player getPlayer(UUID uuid);
+
+    Stream<Player> getAllPlayers();
+
+    String motd();
 }

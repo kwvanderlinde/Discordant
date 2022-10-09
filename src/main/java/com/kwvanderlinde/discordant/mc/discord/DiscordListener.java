@@ -1,7 +1,9 @@
 package com.kwvanderlinde.discordant.mc.discord;
 
-import com.kwvanderlinde.discordant.core.config.DiscordConfig;
+import com.kwvanderlinde.discordant.core.Discordant;
+import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
+import com.kwvanderlinde.discordant.core.messages.scopes.ServerScope;
 import com.kwvanderlinde.discordant.mc.discord.msgparsers.DefaultParser;
 import com.kwvanderlinde.discordant.mc.discord.msgparsers.MentionParser;
 import com.kwvanderlinde.discordant.mc.discord.msgparsers.MsgParser;
@@ -35,10 +37,10 @@ import java.util.List;
 //  AND THEN We don't have to stuff all this logic into one class, but the message parser can instead return a parsed message that can then be handled elsewhere. The `DiscordListener` is responsible for bringing these bits together so that it can be called automatically by JDA.
 public class DiscordListener extends ListenerAdapter {
     private final DiscordApi discordApi;
-    private final DiscordConfig config;
+    private final DiscordantConfig config;
     private final MsgParser chatHandler;
 
-    public DiscordListener(DiscordApi discordApi, DiscordConfig config) {
+    public DiscordListener(DiscordApi discordApi, DiscordantConfig config) {
         this.discordApi = discordApi;
         this.config = config;
         if (config.enableMentions) {
@@ -54,10 +56,10 @@ public class DiscordListener extends ListenerAdapter {
         DedicatedServer server = DiscordantModInitializer.server;
         if (e.getAuthor() != e.getJDA().getSelfUser() && !e.getAuthor().isBot() && server != null) {
             String channelId = e.getChannel().getId();
-            if (channelId.equals(config.chatChannelId)) {
+            if (channelId.equals(config.discord.chatChannelId)) {
                 handleChatInput(e, server);
             }
-            else if (channelId.equals(config.consoleChannelId)) {
+            else if (channelId.equals(config.discord.consoleChannelId)) {
                 handleConsoleInput(e, server);
             }
             else if (config.enableAccountLinking && e.getChannelType() == ChannelType.PRIVATE) {
@@ -89,18 +91,20 @@ public class DiscordListener extends ListenerAdapter {
         server.execute(() -> server.handleConsoleInput(msg, server.createCommandSourceStack()));
     }
 
-    private void handleCommandInput(MessageReceivedEvent e, DedicatedServer server, String command) {
+    private void handleCommandInput(MessageReceivedEvent event, DedicatedServer server, String command) {
         if (command.startsWith("list")) {
             List<ServerPlayer> players = server.getPlayerList().getPlayers();
             if (players.isEmpty()) {
-                discordApi.sendMessage(e.getChannel(), config.noPlayersMsg);
-                return;
+                final var message = config.discord.messages.noPlayers
+                                .instantiate(new ServerScope(DiscordantModInitializer.core.getServer(), config.minecraft.serverName));
+                discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
             }
-            StringBuilder sb = new StringBuilder(config.onlinePlayersMsg);
-            for (ServerPlayer p : players) {
-                sb.append(p.getScoreboardName()).append(", ");
+            else {
+                final var message = config.discord.messages.onlinePlayers
+                        .instantiate(new ServerScope(DiscordantModInitializer.core.getServer(), config.minecraft.serverName));
+
+                discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
             }
-            discordApi.sendMessage(e.getChannel(), sb.substring(0, sb.length() - 2));
         }
     }
 
