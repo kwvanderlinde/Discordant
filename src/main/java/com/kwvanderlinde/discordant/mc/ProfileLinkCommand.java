@@ -3,11 +3,10 @@ package com.kwvanderlinde.discordant.mc;
 import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
 import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
-import com.kwvanderlinde.discordant.mc.messages.SemanticMessageRenderer;
+import com.kwvanderlinde.discordant.mc.messages.ComponentRenderer;
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.network.chat.Component;
 
 public class ProfileLinkCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
@@ -20,10 +19,10 @@ public class ProfileLinkCommand {
                     player.getScoreboardName()
             );
 
-            final var messageConfig = DiscordantModInitializer.core.getMessageConfig();
-            final var component = new PendingVerificationScope(String.valueOf(authCode), DiscordantModInitializer.core.getBotName())
-                    .instantiate(messageConfig.commandLinkMsg)
-                    .reduce(SemanticMessageRenderer::renderMessage);
+            final var config = DiscordantModInitializer.core.getConfig();
+            final var component = config.minecraft.messages.commandLinkMsg
+                            .instantiate(new PendingVerificationScope(String.valueOf(authCode), DiscordantModInitializer.core.getBotName()))
+                            .reduce(ComponentRenderer.instance());
             source.sendSuccess(component, false);
             return 0;
         })));
@@ -31,13 +30,18 @@ public class ProfileLinkCommand {
             final var source = context.getSource();
             final var id = source.getPlayerOrException().getUUID();
             final var wasDeleted = DiscordantModInitializer.core.removeLinkedProfile(id);
+            final var config = DiscordantModInitializer.core.getConfig();
             if (wasDeleted) {
-                source.sendSuccess(new NilScope().instantiate(DiscordantModInitializer.core.getMessageConfig().codeUnlinkMsg)
-                                                 .reduce(SemanticMessageRenderer::renderMessage), false);
+                final var component = config.minecraft.messages.codeUnlinkMsg
+                        .instantiate(new NilScope())
+                        .reduce(ComponentRenderer.instance());
+                source.sendSuccess(component, false);
             }
             else {
-                source.sendFailure(new NilScope().instantiate(DiscordantModInitializer.core.getMessageConfig().codeUnlinkFail)
-                                                 .reduce(SemanticMessageRenderer::renderMessage));
+                final var component = config.minecraft.messages.codeUnlinkFail
+                                .instantiate(new NilScope())
+                                .reduce(ComponentRenderer.instance());
+                source.sendFailure(component);
             }
 
             return 0;

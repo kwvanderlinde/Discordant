@@ -3,48 +3,44 @@ package com.kwvanderlinde.discordant.core.discord.api;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+
+import javax.annotation.Nonnull;
 
 public class NullDiscordApi implements DiscordApi {
     @Override
     public void close() {}
 
-    @NotNull
     @Override
-    public String getBotName() {
+    public @Nonnull String getBotName() {
         return "null";
     }
 
-    @Nullable
     @Override
-    public Guild getGuild() {
+    public @Nullable Guild getGuild() {
         return null;
     }
 
     @Override
-    public void sendMessage(@NotNull MessageChannel ch, @NotNull String msg) {
+    public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
 
     }
 
     @Override
-    public void sendEmbed(@NotNull MessageEmbed e) {
+    public void sendEmbed(@Nonnull MessageEmbed e) {
 
     }
 
     @Override
-    public void postConsoleMessage(@NotNull String msg) {
+    public void sendEmbed(@Nonnull MessageChannel ch, @Nonnull MessageEmbed e) {
+
     }
 
     @Override
-    public void postChatMessage(@NotNull String msg) {
+    public void postConsoleMessage(@Nonnull String msg) {
     }
 
     @Override
-    public void postWebHookMsg(@NotNull String msg, @NotNull String username, @NotNull String avatarUrl) {
-    }
-
-    @Override
-    public void setTopic(@NotNull String msg) {
+    public void setTopic(@Nonnull String msg) {
     }
 }

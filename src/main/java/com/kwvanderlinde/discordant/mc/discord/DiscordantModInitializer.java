@@ -5,13 +5,12 @@ import com.kwvanderlinde.discordant.core.modinterfaces.Advancement;
 import com.kwvanderlinde.discordant.core.modinterfaces.Events;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
-import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.mc.DiscordantCommands;
 import com.kwvanderlinde.discordant.mc.ProfileLinkCommand;
 import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import com.kwvanderlinde.discordant.mc.language.ServerLanguage;
-import com.kwvanderlinde.discordant.mc.messages.SemanticMessageRenderer;
+import com.kwvanderlinde.discordant.mc.messages.ComponentRenderer;
 import com.kwvanderlinde.discordant.mc.mixin.ServerLoginPacketListenerImpl_GameProfileAccessor;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -20,19 +19,13 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.ChatFormatting;
-import net.minecraft.locale.Language;
-import net.minecraft.network.chat.ClickEvent;
-import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.HoverEvent;
-import net.minecraft.network.chat.MutableComponent;
-import net.minecraft.network.chat.Style;
 import net.minecraft.server.dedicated.DedicatedServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public class DiscordantModInitializer implements DedicatedServerModInitializer {
     public static Logger logger = LogManager.getLogger("Discordant");
@@ -71,6 +64,19 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
                 return null;
             }
             return new PlayerAdapter(internalPlayer.getUUID(), internalPlayer.getScoreboardName());
+        }
+
+        @Override
+        public Stream<Player> getAllPlayers() {
+            return server.getPlayerList().getPlayers().stream().map(p -> new PlayerAdapter(
+                    p.getUUID(),
+                    p.getScoreboardName()
+            ));
+        }
+
+        @Override
+        public String motd() {
+            return server.getMotd();
         }
     }
 
@@ -129,7 +135,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
                 final var profile = ((ServerLoginPacketListenerImpl_GameProfileAccessor) netHandler).getGameProfile();
                 handler.joinAttempted(
                         new PlayerAdapter(profile.getId(), profile.getName()),
-                        reason -> netHandler.disconnect(reason.reduce(SemanticMessageRenderer::renderMessage))
+                        reason -> netHandler.disconnect(reason.reduce(ComponentRenderer.instance()))
                 );
             });
         }

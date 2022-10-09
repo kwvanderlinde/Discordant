@@ -1,16 +1,12 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.kwvanderlinde.discordant.core.ServerCache;
-import com.kwvanderlinde.discordant.core.config.DiscordConfig;
+import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.mc.discord.DiscordListener;
-import kong.unirest.Unirest;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
-import net.dv8tion.jda.api.entities.Webhook;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -22,19 +18,18 @@ import javax.annotation.Nullable;
 
 public class JdaDiscordApi implements DiscordApi {
     private final @Nonnull JDA jda;
-    private final @Nonnull DiscordConfig config;
+    private final @Nonnull DiscordantConfig config;
     private final @Nonnull String botName;
     private final @Nullable TextChannel chatChannel;
     private final @Nullable TextChannel consoleChannel;
     private final @Nullable Guild guild;
-    private final @Nullable Webhook webhook;
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull DiscordConfig config, @Nonnull ServerCache cache) throws InterruptedException {
+    public JdaDiscordApi(@Nonnull DiscordantConfig config, @Nonnull ServerCache cache) throws InterruptedException {
         this.config = config;
 
-        jda = JDABuilder.createDefault(config.token)
+        jda = JDABuilder.createDefault(config.discord.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
@@ -42,10 +37,9 @@ public class JdaDiscordApi implements DiscordApi {
                         .build();
         jda.awaitReady();
 
-        if (!config.serverId.isEmpty()) {
-            guild = jda.getGuildById(config.serverId);
-            if (guild != null && config.preloadDiscordMembers) {
-                // TODO Do I need to keep the results? Does this call actually do anything? Does it cache internally or something?
+        if (!config.discord.serverId.isEmpty()) {
+            guild = jda.getGuildById(config.discord.serverId);
+            if (guild != null) {
                 guild.loadMembers();
             }
         }
@@ -53,29 +47,8 @@ public class JdaDiscordApi implements DiscordApi {
             guild = null;
         }
         botName = jda.getSelfUser().getName();
-        chatChannel = jda.getTextChannelById(config.chatChannelId);
-        consoleChannel = jda.getTextChannelById(config.consoleChannelId);
-
-        if (config.enableWebhook && chatChannel != null) {
-            Webhook webhook = null;
-            var webhookId = cache.get("webhook");
-            if (webhookId != null) {
-                final var definedWebhooks = chatChannel.retrieveWebhooks().complete();
-                final var existingWebhook = definedWebhooks.stream().filter(wh -> webhookId.equals(wh.getId())).findFirst();
-                if (existingWebhook.isPresent()) {
-                    webhook = existingWebhook.get();
-                }
-            }
-            if (webhook == null) {
-                webhook = chatChannel.createWebhook("Minecraft Chat Message Forwarding").complete();
-                cache.put("webhook", webhook.getId());
-            }
-
-            this.webhook = webhook;
-        }
-        else {
-            webhook = null;
-        }
+        chatChannel = jda.getTextChannelById(config.discord.chatChannelId);
+        consoleChannel = jda.getTextChannelById(config.discord.consoleChannelId);
     }
 
     public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
@@ -87,6 +60,12 @@ public class JdaDiscordApi implements DiscordApi {
     public void sendEmbed(@Nonnull MessageEmbed e) {
         if (!stopped && chatChannel != null) {
             chatChannel.sendMessageEmbeds(e).queue();
+        }
+    }
+
+    public void sendEmbed(@Nonnull MessageChannel ch, @Nonnull MessageEmbed e) {
+        if (!stopped) {
+            ch.sendMessageEmbeds(e).queue();
         }
     }
 
@@ -115,29 +94,6 @@ public class JdaDiscordApi implements DiscordApi {
                 msg = msg.substring(0, 1999);
             }
             sendMessage(consoleChannel, msg);
-        }
-    }
-
-    @Override
-    public void postChatMessage(@Nonnull String msg) {
-        if (!stopped && chatChannel != null) {
-            sendMessage(chatChannel, msg);
-        }
-    }
-
-    @Override
-    public void postWebHookMsg(@Nonnull String msg, @Nonnull String username, @Nonnull String avatarUrl) {
-        if (!stopped && webhook != null) {
-            // TODO Does JDA not have a way to do what we need?
-            JsonObject object = new JsonObject();
-            object.addProperty("username", username);
-            object.addProperty("avatar_url", avatarUrl);
-            object.addProperty("content", msg);
-
-            Unirest.post(webhook.getUrl())
-                   .header("Content-type", "application/json")
-                   .body(new Gson().toJson(object))
-                   .asStringAsync();
         }
     }
 
