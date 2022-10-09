@@ -43,7 +43,7 @@ public interface Events {
 
     @FunctionalInterface
     interface PlayerMessageSendHandler {
-        void messageSent(Player player, String message);
+        void messageSent(Player player, String message, String plainTextCompositeMessage);
     }
 
     @FunctionalInterface

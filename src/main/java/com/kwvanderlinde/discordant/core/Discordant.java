@@ -143,7 +143,7 @@ public class Discordant {
             }
         });
 
-        minecraftIntegration.events().onPlayerSentMessage((player, message) -> {
+        minecraftIntegration.events().onPlayerSentMessage((player, message, plainTextCompositeMessage) -> {
             if (config.enableMentions) {
                 message = parseDiscordMentions(message);
             }
@@ -162,7 +162,7 @@ public class Discordant {
                 discordApi.postWebHookMsg(message, player.name(), getPlayerIconUrl(player));
             }
             else {
-                discordApi.postChatMessage(message);
+                discordApi.postChatMessage(plainTextCompositeMessage);
             }
         });
 

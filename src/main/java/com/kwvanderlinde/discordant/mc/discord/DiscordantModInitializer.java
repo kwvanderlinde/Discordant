@@ -115,10 +115,10 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
         @Override
         public void onPlayerSentMessage(PlayerMessageSendHandler handler) {
             PlayerEvents.CHAT_MESSAGE_SENT.register((player, msg, textComponent) -> {
-                // TODO Original used textComponent when not webhook. Is that meaningful?
                 handler.messageSent(
                         new PlayerAdapter(player.getUUID(), player.getScoreboardName()),
-                        msg
+                        msg,
+                        textComponent.getString()
                 );
             });
         }
