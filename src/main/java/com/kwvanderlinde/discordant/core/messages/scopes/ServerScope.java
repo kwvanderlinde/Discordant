@@ -1,26 +1,22 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
-import com.kwvanderlinde.discordant.core.modinterfaces.Player;
-import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 
+import javax.annotation.Nonnull;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
-public record ServerScope(Server server, String name) implements Scope<ServerScope> {
-    public static List<String> parameters() {
-        return List.of("server.name", "server.motd", "server.playerCount", "server.maxPlayerCount", "server.players");
-    }
-
+public record ServerScope(String name, String botName, String motd, int playerCount, int maxPlayerCount, List<String> playerNames, long time) implements Scope {
     @Override
-    public Map<String, SemanticMessage.Part> values() {
+    public @Nonnull Map<String, SemanticMessage.Part> values() {
         return Map.of(
                 "server.name", SemanticMessage.literal(name),
-                "server.motd", SemanticMessage.literal(server.motd()),
-                "server.playerCount", SemanticMessage.literal(String.valueOf(server.getPlayerCount())),
-                "server.maxPlayerCount", SemanticMessage.literal(String.valueOf(server.getMaxPlayers())),
-                "server.players", SemanticMessage.literal(server.getAllPlayers().map(Player::name).collect(Collectors.joining(", ")))
+                "server.botName", SemanticMessage.literal(botName),
+                "server.motd", SemanticMessage.literal(motd),
+                "server.playerCount", SemanticMessage.literal(String.valueOf(playerCount)),
+                "server.maxPlayerCount", SemanticMessage.literal(String.valueOf(maxPlayerCount)),
+                "server.players", SemanticMessage.literal(String.join(", ", playerNames)),
+                "server.time", SemanticMessage.literal(String.valueOf(time))
         );
     }
 }

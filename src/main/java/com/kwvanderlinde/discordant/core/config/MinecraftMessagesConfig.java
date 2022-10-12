@@ -5,10 +5,10 @@ import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
 
 public class MinecraftMessagesConfig {
-    public MinecraftMessageConfig<PendingVerificationScope> verificationDisconnect = new MinecraftMessageConfig<>("You need to verify your account via discord. Your code is {code}. Send this code to {botname} PM.");
-    public MinecraftMessageConfig<PendingVerificationScope> commandLinkMsg = new MinecraftMessageConfig<>("Your code is {code}. Send this code to {botname} PM.");
+    public MinecraftMessageConfig<PendingVerificationScope> verificationDisconnect = new MinecraftMessageConfig<>("You need to verify your account via discord. Your code is {verification.code}. Send this code to {server.botName} PM.");
+    public MinecraftMessageConfig<PendingVerificationScope> commandLinkMsg = new MinecraftMessageConfig<>("Your code is {verification.code}. Send this code to {server.botName} PM.");
     public MinecraftMessageConfig<NilScope> codeUnlinkMsg = new MinecraftMessageConfig<>("Unlinked discord profile successfully");
     public MinecraftMessageConfig<NilScope> codeUnlinkFail = new MinecraftMessageConfig<>("Failed to unlink discord profile, profile not found!");
-    public MinecraftMessageConfig<NotificationStateScope> mentionStateUpdateResponse = new MinecraftMessageConfig<>("Mention notifications are now {enablement}");
-    public MinecraftMessageConfig<NotificationStateScope> mentionStateQueryResponse = new MinecraftMessageConfig<>("Mention notifications are {enablement}");
+    public MinecraftMessageConfig<NotificationStateScope> mentionStateUpdateResponse = new MinecraftMessageConfig<>("Mention notifications are now {notifications.enablement}");
+    public MinecraftMessageConfig<NotificationStateScope> mentionStateQueryResponse = new MinecraftMessageConfig<>("Mention notifications are {notifications.enablement}");
 }

@@ -7,7 +7,7 @@ import com.kwvanderlinde.discordant.core.messages.scopes.Scope;
 
 import javax.annotation.Nullable;
 
-public class TopicConfig<T extends Scope<T>> {
+public class TopicConfig<T extends Scope> {
     public @Nullable String description;
 
     // TODO Add a mechanism for parsing or validating the message eagerly on server start rather

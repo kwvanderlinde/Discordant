@@ -1,36 +1,33 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
+import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
-import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
-import net.dv8tion.jda.api.entities.User;
 
-import javax.annotation.Nullable;
-import java.util.HashMap;
-import java.util.List;
+import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record PlayerScope(Profile profile, @Nullable User discordUser, String iconUrl, Map<String, String> avatarUrls) implements Scope<PlayerScope> {
-    public static List<String> parameters() {
-        return List.of("uuid", "username", "player.uuid", "player.name", "discordid", "discordname", "discordtag", "player.iconUrl");
+public record PlayerScope(ProfileScope profileScope, String discordId, String discordName, String discordTag, String iconUrl, Map<String, String> avatarUrls)
+        implements DerivedScope<ProfileScope> {
+
+    @Override
+    public @Nonnull ProfileScope base() {
+        return profileScope;
     }
 
     @Override
-    public Map<String, SemanticMessage.Part> values() {
-        final var result = new HashMap<String, SemanticMessage.Part>();
-        result.putAll(Map.of(
-                "uuid", SemanticMessage.literal(profile.uuid().toString()),
-                "username", SemanticMessage.literal(profile.name()),
-                "player.uuid", SemanticMessage.literal(profile.uuid().toString()),
-                "player.name", SemanticMessage.literal(profile.name()),
-                "discordid", discordUser == null ? SemanticMessage.literal("") : SemanticMessage.literal(discordUser.getId()),
-                "discordname", discordUser == null ? SemanticMessage.literal("") : SemanticMessage.literal(discordUser.getName()),
-                "discordtag", discordUser == null ? SemanticMessage.literal("") : SemanticMessage.literal(discordUser.getAsTag()),
-                "player.iconUrl", SemanticMessage.literal(iconUrl)
-        ));
+    public @Nonnull Map<String, SemanticMessage.Part> notInheritedValues() {
+        final var result =
+                ImmutableMap.<String, SemanticMessage.Part> builder()
+                            .putAll(Map.of(
+                                    "player.discordId", SemanticMessage.literal(discordId),
+                                    "player.discordName", SemanticMessage.literal(discordName),
+                                    "player.discordTag", SemanticMessage.literal(discordTag),
+                                    "player.iconUrl", SemanticMessage.literal(iconUrl)));
+
         for (final var entry : avatarUrls.entrySet()) {
             result.put("player.avatarUrls|" + entry.getKey(), SemanticMessage.literal(entry.getValue()));
         }
 
-        return result;
+        return result.build();
     }
 }

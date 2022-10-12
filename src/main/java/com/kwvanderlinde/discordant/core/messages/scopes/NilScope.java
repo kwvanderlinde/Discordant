@@ -2,16 +2,12 @@ package com.kwvanderlinde.discordant.core.messages.scopes;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-import java.util.List;
+import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record NilScope() implements Scope<NilScope> {
-    public static List<String> parameters() {
-        return List.of();
-    }
-
+public record NilScope() implements Scope {
     @Override
-    public Map<String, SemanticMessage.Part> values() {
+    public @Nonnull Map<String, SemanticMessage.Part> values() {
         return Map.of();
     }
 }

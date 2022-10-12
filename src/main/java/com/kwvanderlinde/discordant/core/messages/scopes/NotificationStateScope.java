@@ -2,19 +2,15 @@ package com.kwvanderlinde.discordant.core.messages.scopes;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-import java.util.List;
+import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record NotificationStateScope(boolean state) implements Scope<NotificationStateScope> {
-    public static List<String> parameters() {
-        return List.of("state", "enablement");
-    }
-
+public record NotificationStateScope(boolean state) implements Scope {
     @Override
-    public Map<String, SemanticMessage.Part> values() {
+    public @Nonnull Map<String, SemanticMessage.Part> values() {
         return Map.of(
-                "state", SemanticMessage.literal(String.valueOf(state)),
-                "enablement", SemanticMessage.literal(state ? "enabled" : "disabled")
+                "notifications.state", SemanticMessage.literal(String.valueOf(state)),
+                "notifications.enablement", SemanticMessage.literal(state ? "enabled" : "disabled")
         );
     }
 }

@@ -8,7 +8,7 @@ import com.kwvanderlinde.discordant.core.messages.scopes.Scope;
 import javax.annotation.Nullable;
 import java.awt.Color;
 
-public class DiscordMessageConfig<T extends Scope<T>> {
+public class DiscordMessageConfig<T extends Scope> {
     public @Nullable String title;
     public @Nullable Color color;
     public @Nullable String image;

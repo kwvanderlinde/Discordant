@@ -2,19 +2,19 @@ package com.kwvanderlinde.discordant.core.messages.scopes;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-import java.util.List;
+import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record PendingVerificationScope(String code, String botName) implements Scope<PendingVerificationScope> {
-    public static List<String> parameters() {
-        return List.of("code", "botname");
+public record PendingVerificationScope(ServerScope serverScope, String code) implements DerivedScope<ServerScope> {
+    @Override
+    public @Nonnull ServerScope base() {
+        return serverScope;
     }
 
     @Override
-    public Map<String, SemanticMessage.Part> values() {
+    public @Nonnull Map<String, SemanticMessage.Part> notInheritedValues() {
         return Map.of(
-                "botname", SemanticMessage.bot(this.botName()),
-                "code", SemanticMessage.verificationCode(this.code())
+                "verification.code", SemanticMessage.verificationCode(this.code())
         );
     }
 }
