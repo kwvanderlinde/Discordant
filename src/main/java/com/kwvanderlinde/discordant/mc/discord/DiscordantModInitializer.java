@@ -197,7 +197,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
 
     @Override
     public void onInitializeServer() {
-        core = Discordant.create(new Integration() {
+        core = new Discordant(new Integration() {
             @Override
             public Path getConfigRoot() {
                 return FabricLoader.getInstance().getConfigDir();

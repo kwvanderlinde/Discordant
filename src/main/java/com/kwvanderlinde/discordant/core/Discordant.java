@@ -49,11 +49,7 @@ import java.util.regex.Pattern;
  * Can be consumed by minecraft integrators in order to support new minecraft versions.
  */
 public class Discordant {
-    public static Discordant create(Integration integration) {
-        return new Discordant(integration);
-    }
-
-    public static final Logger logger = LogManager.getLogger("Discordant");
+    private static final Logger logger = LogManager.getLogger(Discordant.class);
 
     private final Integration minecraftIntegration;
 
