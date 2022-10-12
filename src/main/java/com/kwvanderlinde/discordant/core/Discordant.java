@@ -372,6 +372,9 @@ public class Discordant {
         if (config.color != null) {
             e.setColor(config.color.getRGB());
         }
+        if (config.image != null) {
+            e.setImage(config.image);
+        }
         if (config.thumbnail != null) {
             e.setThumbnail(config.thumbnail);
         }

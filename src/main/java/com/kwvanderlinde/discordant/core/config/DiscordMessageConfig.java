@@ -11,6 +11,7 @@ import java.awt.Color;
 public class DiscordMessageConfig<T extends Scope<T>> {
     public @Nullable String title;
     public @Nullable Color color;
+    public @Nullable String image;
     public @Nullable String thumbnail;
     public @Nullable String description;
 
@@ -18,12 +19,13 @@ public class DiscordMessageConfig<T extends Scope<T>> {
     //  than waiting for it to be used.
 
     public DiscordMessageConfig() {
-        this(null, null, null, null);
+        this(null, null, null, null, null);
     }
 
-    public DiscordMessageConfig(@Nullable String title, @Nullable Color color, @Nullable String thumbnail, @Nullable String description) {
+    public DiscordMessageConfig(@Nullable String title, @Nullable Color color, @Nullable String image, @Nullable String thumbnail, @Nullable String description) {
         this.title = title;
         this.color = color;
+        this.image = image;
         this.thumbnail = thumbnail;
         this.description = description;
     }
@@ -37,6 +39,10 @@ public class DiscordMessageConfig<T extends Scope<T>> {
                                     .reduce(PlainTextRenderer.instance());
         }
         result.color = color;
+        if (image != null) {
+            result.image = ScopeUtil.instantiate(image, scopeValues)
+                                        .reduce(PlainTextRenderer.instance());
+        }
         if (thumbnail != null) {
             result.thumbnail = ScopeUtil.instantiate(thumbnail, scopeValues)
                                         .reduce(PlainTextRenderer.instance());
