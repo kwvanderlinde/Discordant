@@ -6,6 +6,7 @@ import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 public interface Events {
     void onServerStarted(ServerStartedHandler callback);
     void onServerStopping(ServerStoppingHandler callback);
+    void onServerStopped(ServerStoppedHandler callback);
     void onTickStart(TickStartHandler callback);
     void onTickEnd(TickEndHandler callback);
 
@@ -29,6 +30,11 @@ public interface Events {
     @FunctionalInterface
     interface ServerStoppingHandler {
         void stopping(Server server);
+    }
+
+    @FunctionalInterface
+    interface ServerStoppedHandler {
+        void stopped(Server server);
     }
 
     @FunctionalInterface

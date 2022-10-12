@@ -125,7 +125,24 @@ public class Discordant {
             }
         });
         minecraftIntegration.events().onServerStopping((server) -> {
-            shutdown();
+            {
+                // Update the channel topic.
+                final var topic = config.discord.topics.shutdownTopic
+                        .instantiate(new ServerScope(minecraftIntegration.getServer(), config.minecraft.serverName));
+                if (topic.description != null) {
+                    discordApi.setTopic(topic.description);
+                }
+            }
+            {
+                final var message = config.discord.messages.serverStop
+                        .instantiate(new ServerScope(minecraftIntegration.getServer(), config.minecraft.serverName));
+                discordApi.sendEmbed(buildMessageEmbed(message).build());
+            }
+        });
+        minecraftIntegration.events().onServerStopped((server) -> {
+            ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
+            discordApi.close();
+            discordApi = new NullDiscordApi();
         });
         minecraftIntegration.events().onTickStart((server) -> {
             currentTime = System.currentTimeMillis();
@@ -417,33 +434,5 @@ public class Discordant {
             result.put(entry.getKey(), url);
         }
         return result;
-    }
-
-    private void shutdown() {
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
-
-        {
-            // Update the channel topic.
-            final var topic = config.discord.topics.shutdownTopic
-                    .instantiate(new ServerScope(minecraftIntegration.getServer(), config.minecraft.serverName));
-            if (topic.description != null) {
-                discordApi.setTopic(topic.description);
-            }
-        }
-        {
-            final var message = config.discord.messages.serverStop
-                    .instantiate(new ServerScope(minecraftIntegration.getServer(), config.minecraft.serverName));
-            discordApi.sendEmbed(buildMessageEmbed(message).build());
-        }
-
-        // TODO Why sleep?
-        try {
-            Thread.sleep(350L);
-        }
-        catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        discordApi.close();
-        discordApi = new NullDiscordApi();
     }
 }

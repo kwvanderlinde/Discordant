@@ -105,6 +105,13 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
         }
 
         @Override
+        public void onServerStopped(ServerStoppedHandler handler) {
+            ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
+                handler.stopped(new ServerAdapter(server));
+            });
+        }
+
+        @Override
         public void onTickStart(TickStartHandler handler) {
             ServerTickEvents.START_SERVER_TICK.register(server -> {
                 handler.tickStart(new ServerAdapter(server));
