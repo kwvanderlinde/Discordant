@@ -1,20 +1,15 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
+import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-import java.util.List;
-import java.util.Map;
+import javax.annotation.Nonnull;
 
-public record PendingVerificationScope(String code, String botName) implements Scope<PendingVerificationScope> {
-    public static List<String> parameters() {
-        return List.of("code", "botname");
-    }
-
+public record PendingVerificationScope(ServerScope serverScope, String code) implements Scope {
     @Override
-    public Map<String, SemanticMessage.Part> values() {
-        return Map.of(
-                "botname", SemanticMessage.bot(this.botName()),
-                "code", SemanticMessage.verificationCode(this.code())
-        );
+    public void addValuesTo(@Nonnull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
+        serverScope.addValuesTo(builder);
+
+        builder.put("verification.code", SemanticMessage.verificationCode(this.code()));
     }
 }

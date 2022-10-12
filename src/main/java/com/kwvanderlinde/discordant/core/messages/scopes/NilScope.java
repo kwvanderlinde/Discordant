@@ -1,17 +1,13 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
+import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-import java.util.List;
-import java.util.Map;
+import javax.annotation.Nonnull;
 
-public record NilScope() implements Scope<NilScope> {
-    public static List<String> parameters() {
-        return List.of();
-    }
-
+public record NilScope() implements Scope {
     @Override
-    public Map<String, SemanticMessage.Part> values() {
-        return Map.of();
+    public void addValuesTo(@Nonnull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
+        // This page intentionally left blank.
     }
 }

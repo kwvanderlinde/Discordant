@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.mc;
 
+import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
@@ -42,7 +43,7 @@ public class DiscordantCommands {
 
         final var config = DiscordantModInitializer.core.getConfig();
         final var component = config.minecraft.messages.commandLinkMsg
-                .instantiate(new PendingVerificationScope(String.valueOf(authCode), DiscordantModInitializer.core.getBotName()))
+                .instantiate(new PendingVerificationScope(DiscordantModInitializer.core.serverScope(DiscordantModInitializer.core.getServer()), String.valueOf(authCode)))
                 .reduce(ComponentRenderer.instance());
         source.sendSuccess(component, false);
         return 0;

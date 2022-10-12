@@ -54,7 +54,7 @@ public interface Events {
 
     @FunctionalInterface
     interface PlayerJoinAttemptHandler {
-        void joinAttempted(Profile profile, Rejector reject);
+        void joinAttempted(Server server, Profile profile, Rejector reject);
     }
 
     @FunctionalInterface

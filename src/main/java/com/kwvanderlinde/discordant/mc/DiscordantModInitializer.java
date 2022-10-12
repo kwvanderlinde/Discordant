@@ -193,6 +193,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
             ServerLoginConnectionEvents.QUERY_START.register((netHandler, server, sender, synchronizer) -> {
                 final var profile = ((ServerLoginPacketListenerImpl_GameProfileAccessor) netHandler).getGameProfile();
                 handler.joinAttempted(
+                        new ServerAdapter((DedicatedServer) server),
                         new ProfileAdapter(profile),
                         reason -> netHandler.disconnect(reason.reduce(ComponentRenderer.instance()))
                 );

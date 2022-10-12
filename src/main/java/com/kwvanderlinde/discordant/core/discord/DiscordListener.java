@@ -6,7 +6,6 @@ import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.messagehandlers.DefaultMessageHandler;
 import com.kwvanderlinde.discordant.core.discord.messagehandlers.MentionMessageHandler;
 import com.kwvanderlinde.discordant.core.discord.messagehandlers.MessageHandler;
-import com.kwvanderlinde.discordant.core.messages.scopes.ServerScope;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -84,12 +83,12 @@ public class DiscordListener extends ListenerAdapter {
             final var players = server.getAllPlayers().toList();
             if (players.isEmpty()) {
                 final var message = config.discord.messages.noPlayers
-                        .instantiate(new ServerScope(server, config.minecraft.serverName));
+                        .instantiate(discordant.serverScope(server));
                 discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
             }
             else {
                 final var message = config.discord.messages.onlinePlayers
-                        .instantiate(new ServerScope(server, config.minecraft.serverName));
+                        .instantiate(discordant.serverScope(server));
 
                 discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
             }

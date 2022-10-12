@@ -5,14 +5,14 @@ import java.util.Map;
 public class DiscordantConfig {
     public boolean enableLogsForwarding = true;
 
-    public String playerIconUrl = "https://crafatar.com/avatars/{uuid}/?size=16&overlay&ts={time}";
+    public String playerIconUrl = "https://crafatar.com/avatars/{player.uuid}/?size=16&overlay&ts={server.time}";
     public boolean enableAccountLinking = true;
     public boolean forceLinking = false;
     public boolean enableMentions = true;
 
     public Map<String, String> avatarUrls = Map.of(
-            "head", "https://crafatar.com/renders/head/{uuid}/?scale=10&overlay&ts={time}",
-            "body", "https://crafatar.com/renders/body/{uuid}/?scale=10&overlay&ts={time}"
+            "head", "https://crafatar.com/renders/head/{player.uuid}/?scale=10&overlay&ts={server.time}",
+            "body", "https://crafatar.com/renders/body/{player.uuid}/?scale=10&overlay&ts={server.time}"
     );
 
     public DiscordConfig discord = new DiscordConfig();
