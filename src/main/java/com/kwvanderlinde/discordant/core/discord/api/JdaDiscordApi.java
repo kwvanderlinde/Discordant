@@ -12,17 +12,24 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import okhttp3.OkHttpClient;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class JdaDiscordApi implements DiscordApi {
+    private static final Logger logger = LogManager.getLogger(JdaDiscordApi.class);
+
     private final @Nonnull JDA jda;
     private final @Nonnull DiscordantConfig config;
     private final @Nonnull String botName;
     private final @Nullable TextChannel chatChannel;
     private final @Nullable TextChannel consoleChannel;
     private final @Nullable Guild guild;
+    private boolean handleRateLimitations = true;
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
@@ -51,29 +58,51 @@ public class JdaDiscordApi implements DiscordApi {
         consoleChannel = jda.getTextChannelById(config.discord.consoleChannelId);
     }
 
+    @Override
     public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
         if (!stopped) {
-            ch.sendMessage(msg).queue();
+            ch.sendMessage(msg).submit(handleRateLimitations);
         }
     }
 
+    @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
         if (!stopped && chatChannel != null) {
-            chatChannel.sendMessageEmbeds(e).queue();
+            chatChannel.sendMessageEmbeds(e).submit(handleRateLimitations);
         }
     }
 
+    @Override
     public void sendEmbed(@Nonnull MessageChannel ch, @Nonnull MessageEmbed e) {
         if (!stopped) {
-            ch.sendMessageEmbeds(e).queue();
+            ch.sendMessageEmbeds(e).submit(handleRateLimitations);
         }
     }
 
     @Override
     public void close() {
         stopped = true;
-        // Don't let JDA hold things up, it's not worth it.
-        jda.shutdownNow();
+        // Give JDA a short time to finish up. But don't let it sit there forever, it's not worth it.
+        jda.shutdown();
+
+        final var timer = new Timer(true);
+        timer.schedule(
+                new TimerTask() {
+                    @Override
+                    public void run() {
+                        try {
+                            logger.info("JDA took too long to shut down. Cancelling requests");
+                            final var numberOfRequests = jda.cancelRequests();
+                            logger.info("Cancelled {} requests", numberOfRequests);
+                            jda.shutdownNow();
+                        }
+                        finally {
+                            timer.cancel();
+                        }
+                    }
+                },
+                3000
+        );
     }
 
     @Override
@@ -101,7 +130,7 @@ public class JdaDiscordApi implements DiscordApi {
     @Override
     public void setTopic(@Nonnull String msg) {
         if (!stopped && chatChannel != null) {
-            chatChannel.getManager().setTopic(msg).queue();
+            chatChannel.getManager().setTopic(msg).submit(handleRateLimitations);
         }
     }
 }
