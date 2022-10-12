@@ -8,8 +8,7 @@ public interface Integration {
     Server getServer();
 
     // TODO These should probably actually be passing callback for when the events happen.
-    void enableBaseCommands();
-    void enableLinkingCommands();
+    void enableCommands(boolean linkingEnabled);
 
     Events events();
 }

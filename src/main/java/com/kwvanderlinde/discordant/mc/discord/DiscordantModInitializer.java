@@ -10,7 +10,6 @@ import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.mc.DiscordantCommands;
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.ProfileLinkCommand;
 import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import com.kwvanderlinde.discordant.mc.language.ServerLanguage;
 import com.kwvanderlinde.discordant.mc.messages.ComponentRenderer;
@@ -272,16 +271,9 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
             }
 
             @Override
-            public void enableBaseCommands() {
+            public void enableCommands(boolean linkingEnabled) {
                 CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                    DiscordantCommands.register(dispatcher);
-                });
-            }
-
-            @Override
-            public void enableLinkingCommands() {
-                CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
-                    ProfileLinkCommand.register(dispatcher);
+                    DiscordantCommands.register(dispatcher, linkingEnabled);
                 });
             }
 

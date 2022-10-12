@@ -102,10 +102,7 @@ public class Discordant {
             e.printStackTrace();
         }
 
-        minecraftIntegration.enableBaseCommands();
-        if (config.enableAccountLinking && !config.forceLinking) {
-            minecraftIntegration.enableLinkingCommands();
-        }
+        minecraftIntegration.enableCommands(config.enableAccountLinking && !config.forceLinking);
 
         minecraftIntegration.events().onServerStarted((server) -> {
             // TODO Attach server icon as a thumbnail or image if possible.
