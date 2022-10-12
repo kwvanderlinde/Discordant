@@ -7,13 +7,14 @@ import java.util.Map;
 
 public record NotificationStateScope(boolean state) implements Scope<NotificationStateScope> {
     public static List<String> parameters() {
-        return List.of("state");
+        return List.of("state", "enablement");
     }
 
     @Override
     public Map<String, SemanticMessage.Part> values() {
         return Map.of(
-                "state", SemanticMessage.literal(String.valueOf(state))
+                "state", SemanticMessage.literal(String.valueOf(state)),
+                "enablement", SemanticMessage.literal(state ? "enabled" : "disabled")
         );
     }
 }

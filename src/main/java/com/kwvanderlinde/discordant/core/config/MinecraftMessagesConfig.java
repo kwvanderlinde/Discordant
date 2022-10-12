@@ -9,5 +9,6 @@ public class MinecraftMessagesConfig {
     public MinecraftMessageConfig<PendingVerificationScope> commandLinkMsg = new MinecraftMessageConfig<>("Your code is {code}. Send this code to {botname} PM.");
     public MinecraftMessageConfig<NilScope> codeUnlinkMsg = new MinecraftMessageConfig<>("Unlinked discord profile successfully");
     public MinecraftMessageConfig<NilScope> codeUnlinkFail = new MinecraftMessageConfig<>("Failed to unlink discord profile, profile not found!");
-    public MinecraftMessageConfig<NotificationStateScope> mentionState = new MinecraftMessageConfig<>("Mention sound notifications is now set to {state}");
+    public MinecraftMessageConfig<NotificationStateScope> mentionStateUpdateResponse = new MinecraftMessageConfig<>("Mention notifications are now {enablement}");
+    public MinecraftMessageConfig<NotificationStateScope> mentionStateQueryResponse = new MinecraftMessageConfig<>("Mention notifications are {enablement}");
 }
