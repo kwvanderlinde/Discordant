@@ -72,7 +72,8 @@ public class JdaDiscordApi implements DiscordApi {
     @Override
     public void close() {
         stopped = true;
-        jda.shutdown();
+        // Don't let JDA hold things up, it's not worth it.
+        jda.shutdownNow();
     }
 
     @Override

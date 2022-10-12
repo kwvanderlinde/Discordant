@@ -116,6 +116,13 @@ public class Discordant {
             final var message = config.discord.messages.serverStart
                     .instantiate(new ServerScope(server, config.minecraft.serverName));
             discordApi.sendEmbed(buildMessageEmbed(message).build());
+
+            // Update the channel topic.
+            final var topic = config.discord.topics.channelTopic
+                    .instantiate(new ServerScope(server, config.minecraft.serverName));
+            if (topic.description != null) {
+                discordApi.setTopic(topic.description);
+            }
         });
         minecraftIntegration.events().onServerStopping((server) -> {
             shutdown();
