@@ -1,8 +1,9 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
+import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.ServerCache;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
-import com.kwvanderlinde.discordant.mc.discord.DiscordListener;
+import com.kwvanderlinde.discordant.core.discord.DiscordListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -33,14 +34,14 @@ public class JdaDiscordApi implements DiscordApi {
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull DiscordantConfig config, @Nonnull ServerCache cache) throws InterruptedException {
-        this.config = config;
+    public JdaDiscordApi(@Nonnull Discordant discordant, @Nonnull ServerCache cache) throws InterruptedException {
+        this.config = discordant.getConfig();
 
         jda = JDABuilder.createDefault(config.discord.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
-                        .addEventListeners(new Object[]{new DiscordListener(this, config)})
+                        .addEventListeners(new Object[]{new DiscordListener(this, discordant, config)})
                         .build();
         jda.awaitReady();
 

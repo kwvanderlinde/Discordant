@@ -18,6 +18,10 @@ public class SemanticMessage {
         return new Part(botName, new PartTag.Bot());
     }
 
+    public static SemanticMessage.Part discordUser(String userName, String userTag, String roleName, int roleColor) {
+        return new Part(userName, new PartTag.DiscordUser(userTag, roleName, roleColor));
+    }
+
     public static SemanticMessage.Part verificationCode(String code) {
         return new Part(code, new PartTag.VerificationCode());
     }
@@ -26,6 +30,12 @@ public class SemanticMessage {
     private final List<Part> parts = new ArrayList<>();
 
     public SemanticMessage() {
+    }
+
+    public SemanticMessage copy() {
+        final var result = new SemanticMessage();
+        result.parts.addAll(this.parts);
+        return result;
     }
 
     public Stream<Part> parts() {

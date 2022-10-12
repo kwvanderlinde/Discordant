@@ -1,17 +1,21 @@
 package com.kwvanderlinde.discordant.mc.discord;
 
 import com.kwvanderlinde.discordant.core.Discordant;
+import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Advancement;
 import com.kwvanderlinde.discordant.core.modinterfaces.Events;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
+import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.mc.DiscordantCommands;
+import com.kwvanderlinde.discordant.mc.IServerPlayer;
 import com.kwvanderlinde.discordant.mc.ProfileLinkCommand;
 import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
 import com.kwvanderlinde.discordant.mc.language.ServerLanguage;
 import com.kwvanderlinde.discordant.mc.messages.ComponentRenderer;
 import com.kwvanderlinde.discordant.mc.mixin.ServerLoginPacketListenerImpl_GameProfileAccessor;
+import com.mojang.authlib.GameProfile;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -19,11 +23,16 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.network.chat.ChatType;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -35,9 +44,9 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
     private static final ServerLanguage language = new ServerLanguage();
 
     private static final class ServerAdapter implements Server {
-        private final net.minecraft.server.MinecraftServer server;
+        private final DedicatedServer server;
 
-        public ServerAdapter(net.minecraft.server.MinecraftServer server) {
+        public ServerAdapter(DedicatedServer server) {
             this.server = server;
         }
 
@@ -63,26 +72,80 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
             if (internalPlayer == null) {
                 return null;
             }
-            return new PlayerAdapter(internalPlayer.getUUID(), internalPlayer.getScoreboardName());
+            return new PlayerAdapter(internalPlayer);
         }
 
         @Override
         public Stream<Player> getAllPlayers() {
-            return server.getPlayerList().getPlayers().stream().map(p -> new PlayerAdapter(
-                    p.getUUID(),
-                    p.getScoreboardName()
-            ));
+            return server.getPlayerList().getPlayers().stream().map(PlayerAdapter::new);
         }
 
         @Override
         public String motd() {
             return server.getMotd();
         }
+
+        @Override
+        public void runCommand(String command) {
+            server.execute(() -> server.handleConsoleInput(command, server.createCommandSourceStack()));
+        }
     }
 
-    private record PlayerAdapter(UUID uuid, String name) implements Player {
+    private static class PlayerAdapter implements Player {
+        private final ServerPlayer player;
+
+        public PlayerAdapter(ServerPlayer player) {
+            this.player = player;
+        }
+
+        @Override
+        public Profile profile() {
+            return new ProfileAdapter(player.getGameProfile());
+        }
+
+        @Override
+        public UUID uuid() {
+            return player.getUUID();
+        }
+
+        @Override
+        public String name() {
+            return player.getScoreboardName();
+        }
+
+        @Override
+        public void sendSystemMessage(SemanticMessage message) {
+            if (((IServerPlayer) player).isAcceptingChatType(ChatType.CHAT)) {
+                player.sendSystemMessage(message.reduce(new ComponentRenderer()));
+            }
+        }
+
+        @Override
+        public void notifySound() {
+            final var serverPlayer = (IServerPlayer) player;
+            if (serverPlayer.getNotifyState()) {
+                player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING, SoundSource.MASTER, 1.0F, 1.0F);
+            }
+        }
     }
 
+    private static final class ProfileAdapter implements Profile {
+        private final GameProfile profile;
+
+        private ProfileAdapter(GameProfile profile) {
+            this.profile = profile;
+        }
+
+        @Override
+        public UUID uuid() {
+            return profile.getId();
+        }
+
+        @Override
+        public String name() {
+            return profile.getName();
+        }
+    }
 
     private record AdvancementAdapter(String name, String title, String description) implements Advancement {
     }
@@ -93,35 +156,35 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
             ServerLifecycleEvents.SERVER_STARTED.register(server -> {
                 // TODO Try to eliminate this property write.
                 DiscordantModInitializer.server = (DedicatedServer) server;
-                handler.started(new ServerAdapter(server));
+                handler.started(new ServerAdapter((DedicatedServer) server));
             });
         }
 
         @Override
         public void onServerStopping(ServerStoppingHandler handler) {
             ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
-                handler.stopping(new ServerAdapter(server));
+                handler.stopping(new ServerAdapter((DedicatedServer) server));
             });
         }
 
         @Override
         public void onServerStopped(ServerStoppedHandler handler) {
             ServerLifecycleEvents.SERVER_STOPPED.register(server -> {
-                handler.stopped(new ServerAdapter(server));
+                handler.stopped(new ServerAdapter((DedicatedServer) server));
             });
         }
 
         @Override
         public void onTickStart(TickStartHandler handler) {
             ServerTickEvents.START_SERVER_TICK.register(server -> {
-                handler.tickStart(new ServerAdapter(server));
+                handler.tickStart(new ServerAdapter((DedicatedServer) server));
             });
         }
 
         @Override
         public void onTickEnd(TickEndHandler handler) {
             ServerTickEvents.END_SERVER_TICK.register(server -> {
-                handler.tickEnd(new ServerAdapter(server));
+                handler.tickEnd(new ServerAdapter((DedicatedServer) server));
             });
         }
 
@@ -129,7 +192,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
         public void onPlayerSentMessage(PlayerMessageSendHandler handler) {
             PlayerEvents.CHAT_MESSAGE_SENT.register((player, msg, textComponent) -> {
                 handler.messageSent(
-                        new PlayerAdapter(player.getUUID(), player.getScoreboardName()),
+                        new PlayerAdapter(player),
                         msg,
                         textComponent.getString()
                 );
@@ -141,7 +204,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
             ServerLoginConnectionEvents.QUERY_START.register((netHandler, server, sender, synchronizer) -> {
                 final var profile = ((ServerLoginPacketListenerImpl_GameProfileAccessor) netHandler).getGameProfile();
                 handler.joinAttempted(
-                        new PlayerAdapter(profile.getId(), profile.getName()),
+                        new ProfileAdapter(profile),
                         reason -> netHandler.disconnect(reason.reduce(ComponentRenderer.instance()))
                 );
             });
@@ -156,7 +219,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
                 }
 
                 handler.joined(
-                        new PlayerAdapter(netHandler.getPlayer().getUUID(), netHandler.getPlayer().getScoreboardName())
+                        new PlayerAdapter(netHandler.getPlayer())
                 );
             });
         }
@@ -165,7 +228,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
         public void onPlayerDisconnect(PlayerDisconnectHandler handler) {
             ServerPlayConnectionEvents.DISCONNECT.register((netHandler, server) -> {
                 handler.disconnected(
-                        new PlayerAdapter(netHandler.getPlayer().getUUID(), netHandler.getPlayer().getScoreboardName())
+                        new PlayerAdapter(netHandler.getPlayer())
                 );
             });
         }
@@ -174,7 +237,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
         public void onPlayerDeath(PlayerDeathHandler handler) {
             PlayerEvents.DEATH.register((player, damageSource) -> {
                 handler.died(
-                        new PlayerAdapter(player.getUUID(), player.getScoreboardName()),
+                        new PlayerAdapter(player),
                         damageSource.getLocalizedDeathMessage(player).getString()
                 );
             });
@@ -184,7 +247,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
         public void onPlayerAdvancement(PlayerAdvancementHandler handler) {
             PlayerEvents.ADVANCMENT_AWARDED.register((player, advancement) -> {
                 handler.advancementAwarded(
-                        new PlayerAdapter(player.getUUID(), player.getScoreboardName()),
+                        new PlayerAdapter(player),
                         new AdvancementAdapter(
                                 advancement.getDisplay().getFrame().getName(),
                                 advancement.getDisplay().getTitle().getString(),

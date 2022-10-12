@@ -15,4 +15,6 @@ public interface Server {
     Stream<Player> getAllPlayers();
 
     String motd();
+
+    void runCommand(String command);
 }
