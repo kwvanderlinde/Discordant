@@ -30,6 +30,7 @@ public class ConfigManager {
         this.mainConfigPath = configRoot.resolve("config.json");
         this.gson = new GsonBuilder().setPrettyPrinting()
                                      .serializeNulls()
+                                     .disableHtmlEscaping()
                                      .registerTypeAdapter(Color.class, new ColorAdapter())
                                      .create();
     }

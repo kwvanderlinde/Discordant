@@ -162,7 +162,7 @@ public class Discordant {
             final var message = config.discord.messages.playerChat
                     .instantiate(new ChatScope(
                             // TODO Look up the linked profile and pass the corresponding discord user.
-                            new PlayerScope(player, null, getPlayerIconUrl(player)),
+                            new PlayerScope(player, null, getPlayerIconUrl(player), getAvatarUrls(player)),
                             chatMessage
                     ));
             final var e = buildMessageEmbed(message);
@@ -214,7 +214,7 @@ public class Discordant {
 
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerJoin
-                    .instantiate(new PlayerScope(player, null, getPlayerIconUrl(player)));
+                    .instantiate(new PlayerScope(player, null, getPlayerIconUrl(player), getAvatarUrls(player)));
 
             discordApi.sendEmbed(buildMessageEmbed(message).build());
         });
@@ -225,7 +225,7 @@ public class Discordant {
 
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerLeave
-                    .instantiate(new PlayerScope(player, null, getPlayerIconUrl(player)));
+                    .instantiate(new PlayerScope(player, null, getPlayerIconUrl(player), getAvatarUrls(player)));
             discordApi.sendEmbed(buildMessageEmbed(message).build());
 
             knownPlayerIds.remove(player.uuid());
@@ -239,7 +239,7 @@ public class Discordant {
         minecraftIntegration.events().onPlayerDeath((player, deathMessage) -> {
             final var message = config.discord.messages.playerDeath
                     .instantiate(new DeathScope(
-                            new PlayerScope(player, null, getPlayerIconUrl(player)),
+                            new PlayerScope(player, null, getPlayerIconUrl(player), getAvatarUrls(player)),
                             deathMessage
                     ));
             discordApi.sendEmbed(buildMessageEmbed(message).build());
@@ -248,7 +248,7 @@ public class Discordant {
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerAdvancement
                     .instantiate(new AdvancementScope(
-                            new PlayerScope(player, null, getPlayerIconUrl(player)),
+                            new PlayerScope(player, null, getPlayerIconUrl(player), getAvatarUrls(player)),
                             advancement
                     ));
             discordApi.sendEmbed(buildMessageEmbed(message).build());
@@ -326,7 +326,7 @@ public class Discordant {
                 }
             };
             final var message = config.discord.messages.successfulVerification
-                    .instantiate(new PlayerScope(player, author, getPlayerIconUrl(player)));
+                    .instantiate(new PlayerScope(player, author, getPlayerIconUrl(player), getAvatarUrls(player)));
             discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
 
             final var logMessage = String.format("Successfully linked discord account %s to minecraft account %s (%s)",
@@ -344,7 +344,7 @@ public class Discordant {
                 Member m = guild.getMemberById(profile.discordId());
                 final var player = minecraftIntegration.getServer().getPlayer(profile.uuid());
                 final var message = config.discord.messages.alreadyLinked
-                        .instantiate(new PlayerScope(player, m == null ? null : m.getUser(), getPlayerIconUrl(player)));
+                        .instantiate(new PlayerScope(player, m == null ? null : m.getUser(), getPlayerIconUrl(player), getAvatarUrls(player)));
                 discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
                 pendingPlayersUUID.remove(id);
                 pendingPlayers.remove(code);
@@ -398,10 +398,21 @@ public class Discordant {
     }
 
     private String getPlayerIconUrl(Player player) {
-        final var result = config.playerHeadsUrl
+        return config.playerIconUrl
                 .replaceAll("\\{username}", player.name())
                 .replaceAll("\\{uuid}", player.uuid().toString())
                 .replaceAll("\\{time}", String.valueOf(currentTime));
+    }
+
+    private Map<String, String> getAvatarUrls(Player player) {
+        final var result = new HashMap<String, String>();
+        for (final var entry : config.avatarUrls.entrySet()) {
+            final var url = entry.getValue()
+                                 .replaceAll("\\{username}", player.name())
+                                 .replaceAll("\\{uuid}", player.uuid().toString())
+                                 .replaceAll("\\{time}", String.valueOf(currentTime));
+            result.put(entry.getKey(), url);
+        }
         return result;
     }
 

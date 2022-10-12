@@ -6,7 +6,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 public class ScopeUtil {
-    private static final Pattern parameterPattern = Pattern.compile("\\{([a-zA-Z.]*)}");
+    private static final Pattern parameterPattern = Pattern.compile("\\{([a-zA-Z.|]*)}");
 
     public static SemanticMessage instantiate(String template, Map<String, SemanticMessage.Part> values) {
         final var result = new SemanticMessage();
