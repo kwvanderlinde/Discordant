@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.mc.messages;
+package com.kwvanderlinde.discordant.mc;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessageRenderer;

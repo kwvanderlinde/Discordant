@@ -10,9 +10,6 @@ public class DiscordantConfig {
     public boolean forceLinking = false;
     public boolean enableMentions = true;
 
-    public String targetLocalization = "en_us";
-    public boolean isBidirectional = false;
-
     public Map<String, String> avatarUrls = Map.of(
             "head", "https://crafatar.com/renders/head/{uuid}/?scale=10&overlay&ts={time}",
             "body", "https://crafatar.com/renders/body/{uuid}/?scale=10&overlay&ts={time}"

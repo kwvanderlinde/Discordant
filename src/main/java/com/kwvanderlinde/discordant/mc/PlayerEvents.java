@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.mc.events;
+package com.kwvanderlinde.discordant.mc;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
@@ -7,6 +7,9 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 
+/**
+ * It is my firm desire that any custom events are made obsolete by fabric.
+ */
 public class PlayerEvents {
     /**
      * An event that is called when a player dies.

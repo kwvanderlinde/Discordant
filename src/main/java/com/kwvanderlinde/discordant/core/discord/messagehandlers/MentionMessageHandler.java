@@ -2,7 +2,7 @@ package com.kwvanderlinde.discordant.core.discord.messagehandlers;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
-import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
+import com.kwvanderlinde.discordant.mc.DiscordantModInitializer;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 

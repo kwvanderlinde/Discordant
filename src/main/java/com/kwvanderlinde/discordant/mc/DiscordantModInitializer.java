@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.mc.discord;
+package com.kwvanderlinde.discordant.mc;
 
 import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
@@ -8,11 +8,6 @@ import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
 import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
-import com.kwvanderlinde.discordant.mc.DiscordantCommands;
-import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
-import com.kwvanderlinde.discordant.mc.language.ServerLanguage;
-import com.kwvanderlinde.discordant.mc.messages.ComponentRenderer;
 import com.kwvanderlinde.discordant.mc.mixin.ServerLoginPacketListenerImpl_GameProfileAccessor;
 import com.mojang.authlib.GameProfile;
 import net.fabricmc.api.DedicatedServerModInitializer;
@@ -28,19 +23,14 @@ import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
 import java.util.UUID;
 import java.util.stream.Stream;
 
 public class DiscordantModInitializer implements DedicatedServerModInitializer {
-    public static Logger logger = LogManager.getLogger("Discordant");
-
     public static Discordant core;
     public static DedicatedServer server;
-    private static final ServerLanguage language = new ServerLanguage();
 
     private static final class ServerAdapter implements Server {
         private final DedicatedServer server;
@@ -282,8 +272,5 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
                 return new EventsAdapter();
             }
         });
-
-        final var config = core.getConfig();
-        language.loadAllLanguagesIncludingModded(config.targetLocalization, config.isBidirectional);
     }
 }

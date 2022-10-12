@@ -1,6 +1,6 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
-import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
+import com.kwvanderlinde.discordant.mc.PlayerEvents;
 import net.minecraft.advancements.Advancement;
 import net.minecraft.server.PlayerAdvancements;
 import net.minecraft.server.level.ServerPlayer;

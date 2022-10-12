@@ -3,8 +3,6 @@ package com.kwvanderlinde.discordant.mc;
 import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
-import com.kwvanderlinde.discordant.mc.discord.DiscordantModInitializer;
-import com.kwvanderlinde.discordant.mc.messages.ComponentRenderer;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;

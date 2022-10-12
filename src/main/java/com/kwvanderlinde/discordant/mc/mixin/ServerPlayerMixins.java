@@ -1,12 +1,10 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.events.PlayerEvents;
+import com.kwvanderlinde.discordant.mc.PlayerEvents;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.ChatType;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
