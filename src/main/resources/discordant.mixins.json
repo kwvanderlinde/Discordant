@@ -4,7 +4,6 @@
   "package": "com.kwvanderlinde.discordant.mc.mixin",
   "compatibilityLevel": "JAVA_16",
   "mixins": [
-    "ChatMixins",
     "PlayerAdvancementsMixins",
     "ServerPlayerMixins",
     "ServerLoginPacketListenerImpl_GameProfileAccessor"

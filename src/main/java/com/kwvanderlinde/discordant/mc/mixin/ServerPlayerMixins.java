@@ -22,7 +22,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ServerPlayer.class)
 public abstract class ServerPlayerMixins extends Player implements IServerPlayer {
     @Shadow
-    protected abstract boolean acceptsChat(ResourceKey<ChatType> resourceKey);
+    protected abstract boolean acceptsSystemMessages(boolean bl);
+
+    @Shadow
+    protected abstract boolean acceptsChatMessages();
 
     private boolean notifySound = true;
 
@@ -62,8 +65,8 @@ public abstract class ServerPlayerMixins extends Player implements IServerPlayer
     }
 
     @Override
-    public boolean isAcceptingChatType(ResourceKey<ChatType> t) {
-        return acceptsChat(t);
+    public boolean isAcceptingChatMessages() {
+        return acceptsChatMessages();
     }
 
 

@@ -20,10 +20,11 @@ import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.network.chat.ChatType;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.dedicated.DedicatedServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -32,7 +33,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.nio.file.Path;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Stream;
 
@@ -115,7 +115,8 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
 
         @Override
         public void sendSystemMessage(SemanticMessage message) {
-            if (((IServerPlayer) player).isAcceptingChatType(ChatType.CHAT)) {
+            // TODO Why aren't we checking if system messages are accepting.
+            if (((IServerPlayer) player).isAcceptingChatMessages()) {
                 player.sendSystemMessage(message.reduce(new ComponentRenderer()));
             }
         }
@@ -190,12 +191,11 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
 
         @Override
         public void onPlayerSentMessage(PlayerMessageSendHandler handler) {
-            PlayerEvents.CHAT_MESSAGE_SENT.register((player, msg, textComponent) -> {
-                handler.messageSent(
-                        new PlayerAdapter(player),
-                        msg,
-                        textComponent.getString()
-                );
+            ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
+                final var plainMessage = message.signedContent().plain();
+                handler.messageSent(new PlayerAdapter(sender),
+                                    plainMessage,
+                                    Component.translatable("chat.type.text", sender.getDisplayName(), plainMessage).getString());
             });
         }
 
@@ -245,7 +245,7 @@ public class DiscordantModInitializer implements DedicatedServerModInitializer {
 
         @Override
         public void onPlayerAdvancement(PlayerAdvancementHandler handler) {
-            PlayerEvents.ADVANCMENT_AWARDED.register((player, advancement) -> {
+            PlayerEvents.ADVANCEMENT_AWARDED.register((player, advancement) -> {
                 handler.advancementAwarded(
                         new PlayerAdapter(player),
                         new AdvancementAdapter(
