@@ -40,6 +40,11 @@ public class ConfigManager {
     }
 
     public void ensureConfigStructure() throws IOException {
+        final var linkedProfiles = configRoot.resolve("linked-profiles");
+
+        Files.createDirectories(configRoot);
+        Files.createDirectories(linkedProfiles);
+
         if (!Files.exists(mainConfigPath)) {
             try {
                 String config = gson.toJson(new DiscordantConfig());
@@ -52,11 +57,6 @@ public class ConfigManager {
                 throw t;
             }
         }
-
-        final var linkedProfiles = configRoot.resolve("linked-profiles");
-
-        Files.createDirectories(configRoot);
-        Files.createDirectories(linkedProfiles);
     }
 
     public DiscordantConfig readDiscordLinkSettings() throws FileNotFoundException {
