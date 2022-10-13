@@ -1,8 +1,8 @@
 package com.kwvanderlinde.discordant.core.discord.messagehandlers;
 
+import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
-import com.kwvanderlinde.discordant.mc.DiscordantModInitializer;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 
@@ -24,9 +24,14 @@ public class MentionMessageHandler implements MessageHandler {
     private final Pattern pattern = Pattern.compile("(?<=!\\+).+?(?=!\\+|$|\\s)");
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
+    private final Discordant discordant;
+
+    public MentionMessageHandler(Discordant discordant) {
+        this.discordant = discordant;
+    }
+
     @Override
     public void handleChat(MessageReceivedEvent e, Server server, String msg) {
-        System.out.printf("Handling chat message: %s%n", msg);
         Member member = e.getMember();
         final Set<String> playerNamesToNotify = new HashSet<>();
         if (msg.contains("!+")) {
@@ -38,7 +43,7 @@ public class MentionMessageHandler implements MessageHandler {
                 if (s.startsWith("!")) {
                     s = s.substring(1);
                 }
-                String name = DiscordantModInitializer.core.getLinkedPlayerNameForDiscordId(s);
+                String name = discordant.getLinkedPlayerNameForDiscordId(s);
                 if (name != null) {
                     playerNamesToNotify.add(name.toLowerCase());
                     msg = msg.replaceAll("<(@.|@)" + s + ">", "@" + name);

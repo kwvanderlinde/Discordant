@@ -13,5 +13,9 @@ public interface Player {
 
     void sendSystemMessage(SemanticMessage message);
 
+    boolean isMentionNotificationsEnabled();
+
+    void setMentionNotificationsEnabled(boolean enabled);
+
     void notifySound();
 }

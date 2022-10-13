@@ -19,6 +19,7 @@ import com.kwvanderlinde.discordant.core.messages.scopes.ChatScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.DeathScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.DiscordUserScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
+import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PlayerScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.ProfileScope;
@@ -36,7 +37,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -56,7 +56,23 @@ import java.util.regex.Pattern;
 public class Discordant {
     private static final Logger logger = LogManager.getLogger(Discordant.class);
 
-    private final Integration minecraftIntegration;
+    public static Discordant initialize(Integration integration) {
+        // Initialize the services (config, cache, discord)
+
+        try {
+            return new Discordant(integration);
+        }
+        catch (ConfigurationValidationFailed e) {
+            logger.error("Invalid discordant configuration: {}", e.getMessage());
+            return null;
+        }
+        catch (ModLoadFailed e) {
+            logger.error("Failed to load Discordant mod: {}", e.getMessage(), e);
+            return null;
+        }
+    }
+
+    private @Nullable Server server;
 
     private ServerCache serverCache;
     private DiscordApi discordApi = new NullDiscordApi();
@@ -76,40 +92,52 @@ public class Discordant {
 
     // TODO Mod initializer also included language support. We should find a way to do that without a dependency on minecraft
 
-    public Discordant(Integration minecraftIntegration) {
-        this.minecraftIntegration = minecraftIntegration;
-
+    public Discordant(Integration minecraftIntegration) throws ModLoadFailed, ConfigurationValidationFailed {
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
 
         this.serverCache = new FileBackedServerCache(configRoot.resolve("cache"));
 
-        final var manager = new ConfigManager(configRoot);
+        // The crucial bits are whether we can load our configuration and whether JDA can
+        // initialize, so do those next to one another. Without those there is no hope.
         try {
+            final var manager = new ConfigManager(configRoot);
             manager.ensureConfigStructure();
             config = manager.readDiscordLinkSettings();
-        }
-        // TODO Hard failure on some of these exceptions. And by "hard" I mean don't initialize
-        //  most mod functionality.
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-        linkedProfileRepository = new ConfigProfileRepository(manager.getConfigRoot().resolve("linked-profiles"));
 
-        try {
+            final var discordConfig = config.discord;
+            if ("".equals(discordConfig.token) || null == discordConfig.token) {
+                throw new ConfigurationValidationFailed("A bot token must be provided in config.json!");
+            }
+            if ("".equals(discordConfig.serverId) || null == discordConfig.serverId) {
+                throw new ConfigurationValidationFailed("A server ID must be provided in config.json!");
+            }
+            if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
+                throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
+            }
+            if (config.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
+                throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
+            }
+
             discordApi = new JdaDiscordApi(this, serverCache);
-
-            logAppender = new DiscordantAppender(Level.INFO, discordApi);
-            ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
-
-            botName = discordApi.getBotName();
         }
-        catch (InterruptedException e) {
-            e.printStackTrace();
+        catch (ConfigurationValidationFailed e) {
+            throw e;
         }
+        catch (Exception e) {
+            throw new ModLoadFailed(e.getMessage(), e);
+        }
+
+        linkedProfileRepository = new ConfigProfileRepository(configRoot.resolve("linked-profiles"));
+        botName = discordApi.getBotName();
+
+        logAppender = new DiscordantAppender(Level.INFO, discordApi);
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
 
         minecraftIntegration.enableCommands(config.enableAccountLinking && !config.forceLinking);
 
         minecraftIntegration.events().onServerStarted((server) -> {
+            Discordant.this.server = server;
+
             // TODO Attach server icon as a thumbnail or image if possible.
             final var message = config.discord.messages.serverStart
                     .instantiate(serverScope(server));
@@ -270,10 +298,43 @@ public class Discordant {
                     ));
             discordApi.sendEmbed(buildMessageEmbed(message).build());
         });
+
+        final var commandHandlers = minecraftIntegration.commandsHandlers();
+        commandHandlers.link = (player, respondWith) -> {
+            // TODO If already linked, tell the user instead of generating a new code.
+            final int authCode = generateLinkCode(player.uuid(), player.name());
+            final var scope = new PendingVerificationScope(serverScope(getServer()), String.valueOf(authCode));
+            respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
+        };
+        commandHandlers.unlink = (player, respondWith) -> {
+            final var wasDeleted = removeLinkedProfile(player.uuid());
+            if (wasDeleted) {
+                final var component = config.minecraft.messages.codeUnlinkMsg
+                        .instantiate(new NilScope());
+                respondWith.success(component);
+            }
+            else {
+                final var component = config.minecraft.messages.codeUnlinkFail
+                        .instantiate(new NilScope());
+                respondWith.failure(component);
+            }
+        };
+        commandHandlers.queryMentionNotificationsEnabled = (player, respondWith) -> {
+            final var state = player.isMentionNotificationsEnabled();
+            final var message = config.minecraft.messages.mentionStateQueryResponse
+                    .instantiate(new NotificationStateScope(state));
+            respondWith.success(message);
+        };
+        commandHandlers.setMentionNotificationsEnabled = (player, enabled, respondWith) -> {
+            player.setMentionNotificationsEnabled(enabled);
+            final var message = config.minecraft.messages.mentionStateUpdateResponse
+                    .instantiate(new NotificationStateScope(enabled));
+            respondWith.success(message);
+        };
     }
 
-    public Server getServer() {
-        return minecraftIntegration.getServer();
+    public @Nullable Server getServer() {
+        return server;
     }
 
     public String getBotName() {
@@ -325,7 +386,7 @@ public class Discordant {
             pendingPlayersUUID.remove(id);
             pendingPlayers.remove(code);
             if (!config.forceLinking) {
-                final var player = minecraftIntegration.getServer().getPlayer(id);
+                final var player = getServer().getPlayer(id);
                 if (player != null) {
                     linkedPlayers.put(player.uuid(), linkedProfile);
                     linkedPlayersByDiscordId.put(linkedProfile.discordId(), player.name());

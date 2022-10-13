@@ -2,7 +2,6 @@ package com.kwvanderlinde.discordant.core.modinterfaces;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-// TODO Don't name this interface after a design pattern.
 public interface Events {
     void onServerStarted(ServerStartedHandler callback);
     void onServerStopping(ServerStoppingHandler callback);

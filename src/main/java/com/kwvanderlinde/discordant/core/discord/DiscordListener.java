@@ -30,7 +30,7 @@ public class DiscordListener extends ListenerAdapter {
         this.config = config;
 
         if (config.enableMentions) {
-            chatHandler = new MentionMessageHandler();
+            chatHandler = new MentionMessageHandler(discordant);
         }
         else {
             chatHandler = new DefaultMessageHandler();

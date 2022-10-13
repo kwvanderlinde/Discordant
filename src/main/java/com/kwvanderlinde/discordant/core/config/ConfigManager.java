@@ -54,14 +54,9 @@ public class ConfigManager {
         }
 
         final var linkedProfiles = configRoot.resolve("linked-profiles");
-        // Why do we need version-specific languages? What do these languages even do?
-        final var languages = configRoot.resolve("languages");
-        final var languages119 = languages.resolve("1.19");
 
         Files.createDirectories(configRoot);
         Files.createDirectories(linkedProfiles);
-        Files.createDirectories(languages);
-        Files.createDirectories(languages119);
     }
 
     public DiscordantConfig readDiscordLinkSettings() throws FileNotFoundException {
@@ -75,15 +70,12 @@ public class ConfigManager {
             final var colorString = String.format(
                     "%06X", rgbNoAlpha
             );
-            final var result = new JsonPrimitive(colorString);
-            return result;
+            return new JsonPrimitive(colorString);
         }
 
         @Override
         public Color deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            final var string = json.getAsString();
-            final var result = new Color(Integer.parseInt(string, 16));
-            return result;
+            return new Color(Integer.parseInt(json.getAsString(), 16));
         }
     }
 

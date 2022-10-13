@@ -45,18 +45,28 @@ public class JdaDiscordApi implements DiscordApi {
                         .build();
         jda.awaitReady();
 
-        if (!config.discord.serverId.isEmpty()) {
-            guild = jda.getGuildById(config.discord.serverId);
-            if (guild != null) {
-                guild.loadMembers();
+        try {
+            if (!config.discord.serverId.isEmpty()) {
+                guild = jda.getGuildById(config.discord.serverId);
+                if (guild != null) {
+                    guild.loadMembers();
+                }
             }
+            else {
+                guild = null;
+            }
+            botName = jda.getSelfUser().getName();
+            chatChannel = jda.getTextChannelById(config.discord.chatChannelId);
+            consoleChannel = config.enableLogsForwarding
+                    ? jda.getTextChannelById(config.discord.consoleChannelId)
+                    : null;
         }
-        else {
-            guild = null;
+        catch (Exception e) {
+            // Failed to load JDA somehow, so make sure it doesn't hang around and mess with the
+            // process.
+            jda.shutdownNow();
+            throw e;
         }
-        botName = jda.getSelfUser().getName();
-        chatChannel = jda.getTextChannelById(config.discord.chatChannelId);
-        consoleChannel = jda.getTextChannelById(config.discord.consoleChannelId);
     }
 
     @Override

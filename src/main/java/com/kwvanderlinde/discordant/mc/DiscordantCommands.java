@@ -1,9 +1,8 @@
 package com.kwvanderlinde.discordant.mc;
 
-import com.kwvanderlinde.discordant.core.Discordant;
-import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
-import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
-import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
+import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
+import com.kwvanderlinde.discordant.core.modinterfaces.CommandHandlers;
+import com.kwvanderlinde.discordant.mc.integration.PlayerAdapter;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
@@ -11,83 +10,59 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 
 public class DiscordantCommands {
-    // TODO Move business logic out of here and into core.
+    private record CommandSourceStackResponder(CommandSourceStack source) implements CommandHandlers.Responder {
+        @Override
+        public void success(SemanticMessage message) {
+            source.sendSuccess(message.reduce(ComponentRenderer.instance()), false);
+        }
 
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, boolean linkingEnabled) {
+        @Override
+        public void failure(SemanticMessage message) {
+            source.sendFailure(message.reduce(ComponentRenderer.instance()));
+        }
+    }
+
+    public static void register(CommandHandlers commandHandlers, CommandDispatcher<CommandSourceStack> dispatcher, boolean linkingEnabled) {
         final var commands = Commands.literal("discord");
 
         // Toggle notification sounds.
         commands.then(Commands.literal("enable-mention-notification")
-                              .executes(context -> sendNotifySoundState(context.getSource()))
+                              .executes(context -> sendNotifySoundState(context.getSource(), commandHandlers.queryMentionNotificationsEnabled))
                               .then(Commands.argument("soundstate", BoolArgumentType.bool())
-                                            .executes(context -> switchNotifySoundState(context.getSource(), BoolArgumentType.getBool(context, "soundstate")))));
+                                            .executes(context -> switchNotifySoundState(context.getSource(), BoolArgumentType.getBool(context, "soundstate"), commandHandlers.setMentionNotificationsEnabled))));
 
         // Linking commands only if linking is a possibility.
         if (linkingEnabled) {
             commands.then(Commands.literal("link")
-                                  .executes(context -> link(context.getSource())))
+                                  .executes(context -> link(context.getSource(), commandHandlers.link)))
                     .then(Commands.literal("unlink")
-                                  .executes(context -> unlink(context.getSource())));
+                                  .executes(context -> unlink(context.getSource(), commandHandlers.unlink)));
         }
 
         dispatcher.register(commands);
     }
 
-    private static int link(CommandSourceStack source) throws CommandSyntaxException {
-        // TODO If already linked, tell the user instead of generating a new code.
+    private static int link(CommandSourceStack source, CommandHandlers.LinkHandler handler) throws CommandSyntaxException {
         final var player = source.getPlayerOrException();
-        final int authCode = DiscordantModInitializer.core.generateLinkCode(
-                player.getUUID(),
-                player.getScoreboardName()
-        );
-
-        final var config = DiscordantModInitializer.core.getConfig();
-        final var component = config.minecraft.messages.commandLinkMsg
-                .instantiate(new PendingVerificationScope(DiscordantModInitializer.core.serverScope(DiscordantModInitializer.core.getServer()), String.valueOf(authCode)))
-                .reduce(ComponentRenderer.instance());
-        source.sendSuccess(component, false);
+        handler.handle(new PlayerAdapter(player), new CommandSourceStackResponder(source));
         return 0;
     }
 
-    private static int unlink(CommandSourceStack source) throws CommandSyntaxException {
-        final var id = source.getPlayerOrException().getUUID();
-        final var wasDeleted = DiscordantModInitializer.core.removeLinkedProfile(id);
-        final var config = DiscordantModInitializer.core.getConfig();
-        if (wasDeleted) {
-            final var component = config.minecraft.messages.codeUnlinkMsg
-                    .instantiate(new NilScope())
-                    .reduce(ComponentRenderer.instance());
-            source.sendSuccess(component, false);
-        }
-        else {
-            final var component = config.minecraft.messages.codeUnlinkFail
-                    .instantiate(new NilScope())
-                    .reduce(ComponentRenderer.instance());
-            source.sendFailure(component);
-        }
-
+    private static int unlink(CommandSourceStack source, CommandHandlers.UnlinkHandler handler) throws CommandSyntaxException {
+        final var player = source.getPlayerOrException();
+        handler.handle(new PlayerAdapter(player), new CommandSourceStackResponder(source));
         return 0;
     }
 
-    private static int sendNotifySoundState(CommandSourceStack source) throws CommandSyntaxException {
-        IServerPlayer player = (IServerPlayer) source.getPlayerOrException();
-        final var state = player.getNotifyState();
-        final var config = DiscordantModInitializer.core.getConfig();
-        final var component = config.minecraft.messages.mentionStateQueryResponse
-                .instantiate(new NotificationStateScope(state))
-                .reduce(ComponentRenderer.instance());
-        source.sendSuccess(component, false);
+    private static int sendNotifySoundState(CommandSourceStack source, CommandHandlers.QueryMentionNotificationEnabledsHandler handler) throws CommandSyntaxException {
+        final var player = source.getPlayerOrException();
+        handler.handle(new PlayerAdapter(player), new CommandSourceStackResponder(source));
         return 0;
     }
 
-    private static int switchNotifySoundState(CommandSourceStack source, boolean state) throws CommandSyntaxException {
-        IServerPlayer player = (IServerPlayer) source.getPlayerOrException();
-        player.setNotifyState(state);
-        final var config = DiscordantModInitializer.core.getConfig();
-        final var component = config.minecraft.messages.mentionStateUpdateResponse
-                        .instantiate(new NotificationStateScope(state))
-                        .reduce(ComponentRenderer.instance());
-        source.sendSuccess(component, false);
+    private static int switchNotifySoundState(CommandSourceStack source, boolean state, CommandHandlers.SetMentionNotificationsHandler handler) throws CommandSyntaxException {
+        final var player = source.getPlayerOrException();
+        handler.handle(new PlayerAdapter(player), state, new CommandSourceStackResponder(source));
         return 0;
     }
 }
