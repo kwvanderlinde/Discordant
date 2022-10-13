@@ -2,14 +2,14 @@ package com.kwvanderlinde.discordant.core.messages.scopes;
 
 import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
-import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.Nonnull;
 import java.util.Map;
 
 public record PlayerScope(ProfileScope profileScope, String discordId, String discordName, String discordTag, String iconUrl, Map<String, String> avatarUrls)
         implements Scope {
     @Override
-    public void addValuesTo(@NotNull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
+    public void addValuesTo(@Nonnull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
         profileScope.addValuesTo(builder);
 
         builder.put("player.discordId", SemanticMessage.literal(discordId));
