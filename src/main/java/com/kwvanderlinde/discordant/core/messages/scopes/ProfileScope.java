@@ -7,8 +7,7 @@ import javax.annotation.Nonnull;
 import java.util.Map;
 import java.util.UUID;
 
-public record ProfileScope(ServerScope serverScope, UUID playerUuid, String playerName)
-        implements DerivedScope<ServerScope> {
+public record ProfileScope(ServerScope serverScope, UUID playerUuid, String playerName) implements SingleDerivedScope<ServerScope> {
 
     @Override
     public @Nonnull ServerScope base() {

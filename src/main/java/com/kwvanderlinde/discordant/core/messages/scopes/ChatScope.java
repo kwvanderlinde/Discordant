@@ -5,7 +5,7 @@ import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record ChatScope(PlayerScope playerScope, String message) implements DerivedScope<PlayerScope> {
+public record ChatScope(PlayerScope playerScope, String message) implements SingleDerivedScope<PlayerScope> {
     @Override
     public @Nonnull PlayerScope base() {
         return playerScope;

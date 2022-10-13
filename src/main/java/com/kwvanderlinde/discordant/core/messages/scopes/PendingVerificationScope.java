@@ -5,7 +5,7 @@ import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record PendingVerificationScope(ServerScope serverScope, String code) implements DerivedScope<ServerScope> {
+public record PendingVerificationScope(ServerScope serverScope, String code) implements SingleDerivedScope<ServerScope> {
     @Override
     public @Nonnull ServerScope base() {
         return serverScope;

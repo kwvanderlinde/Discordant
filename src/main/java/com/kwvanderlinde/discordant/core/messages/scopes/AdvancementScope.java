@@ -5,7 +5,7 @@ import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import javax.annotation.Nonnull;
 import java.util.Map;
 
-public record AdvancementScope(PlayerScope base, String name, String title, String description) implements DerivedScope<PlayerScope> {
+public record AdvancementScope(PlayerScope base, String name, String title, String description) implements SingleDerivedScope<PlayerScope> {
     @Override
     public @Nonnull Map<String, SemanticMessage.Part> notInheritedValues() {
         return Map.of(

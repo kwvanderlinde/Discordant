@@ -7,11 +7,12 @@ import javax.annotation.Nonnull;
 import java.util.Map;
 
 public record PlayerScope(ProfileScope profileScope, String discordId, String discordName, String discordTag, String iconUrl, Map<String, String> avatarUrls)
-        implements DerivedScope<ProfileScope> {
+        implements DerivedScope<DerivedScope.Appended<DerivedScope.Appended<DerivedScope.None, ProfileScope>, ServerScope>> {
 
     @Override
-    public @Nonnull ProfileScope base() {
-        return profileScope;
+    public @Nonnull Appended<Appended<None, ProfileScope>, ServerScope> bases() {
+        return derivation().with(profileScope)
+                           .with(profileScope.serverScope());
     }
 
     @Override
