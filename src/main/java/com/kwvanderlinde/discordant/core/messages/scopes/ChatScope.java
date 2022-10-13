@@ -1,20 +1,15 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
+import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
 
-public record ChatScope(PlayerScope playerScope, String message) implements SingleDerivedScope<PlayerScope> {
+public record ChatScope(PlayerScope playerScope, String message) implements Scope {
     @Override
-    public @Nonnull PlayerScope base() {
-        return playerScope;
-    }
+    public void addValuesTo(@Nonnull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
+        playerScope.addValuesTo(builder);
 
-    @Override
-    public @Nonnull Map<String, SemanticMessage.Part> notInheritedValues() {
-        return Map.of(
-                "chat.message", SemanticMessage.literal(message)
-        );
+        builder.put("chat.message", SemanticMessage.literal(message));
     }
 }

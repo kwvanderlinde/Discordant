@@ -1,20 +1,14 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
+import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
-import java.util.Map;
-
-public record DeathScope(PlayerScope playerScope, String message) implements SingleDerivedScope<PlayerScope> {
+public record DeathScope(PlayerScope playerScope, String message) implements Scope {
     @Override
-    public @Nonnull PlayerScope base() {
-        return playerScope;
-    }
+    public void addValuesTo(@NotNull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
+        playerScope.addValuesTo(builder);
 
-    @Override
-    public @Nonnull Map<String, SemanticMessage.Part> notInheritedValues() {
-        return Map.of(
-                "death.message", SemanticMessage.literal(message)
-        );
+        builder.put("death.message", SemanticMessage.literal(message));
     }
 }

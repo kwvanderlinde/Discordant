@@ -2,33 +2,22 @@ package com.kwvanderlinde.discordant.core.messages.scopes;
 
 import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
 import java.util.Map;
 
 public record PlayerScope(ProfileScope profileScope, String discordId, String discordName, String discordTag, String iconUrl, Map<String, String> avatarUrls)
-        implements DerivedScope<DerivedScope.Appended<DerivedScope.Appended<DerivedScope.None, ProfileScope>, ServerScope>> {
-
+        implements Scope {
     @Override
-    public @Nonnull Appended<Appended<None, ProfileScope>, ServerScope> bases() {
-        return derivation().with(profileScope)
-                           .with(profileScope.serverScope());
-    }
+    public void addValuesTo(@NotNull ImmutableMap.Builder<String, SemanticMessage.Part> builder) {
+        profileScope.addValuesTo(builder);
 
-    @Override
-    public @Nonnull Map<String, SemanticMessage.Part> notInheritedValues() {
-        final var result =
-                ImmutableMap.<String, SemanticMessage.Part> builder()
-                            .putAll(Map.of(
-                                    "player.discordId", SemanticMessage.literal(discordId),
-                                    "player.discordName", SemanticMessage.literal(discordName),
-                                    "player.discordTag", SemanticMessage.literal(discordTag),
-                                    "player.iconUrl", SemanticMessage.literal(iconUrl)));
-
+        builder.put("player.discordId", SemanticMessage.literal(discordId));
+        builder.put("player.discordName", SemanticMessage.literal(discordName));
+        builder.put("player.discordTag", SemanticMessage.literal(discordTag));
+        builder.put("player.iconUrl", SemanticMessage.literal(iconUrl));
         for (final var entry : avatarUrls.entrySet()) {
-            result.put("player.avatarUrls|" + entry.getKey(), SemanticMessage.literal(entry.getValue()));
+            builder.put("player.avatarUrls|" + entry.getKey(), SemanticMessage.literal(entry.getValue()));
         }
-
-        return result.build();
     }
 }

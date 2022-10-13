@@ -1,11 +1,11 @@
 package com.kwvanderlinde.discordant.core.messages.scopes;
 
+import com.google.common.collect.ImmutableMap;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
 import javax.annotation.Nonnull;
 import java.util.Map;
 
 public interface Scope {
-    @Nonnull
-    Map<String, SemanticMessage.Part> values();
+    void addValuesTo(@Nonnull ImmutableMap.Builder<String, SemanticMessage.Part> builder);
 }
