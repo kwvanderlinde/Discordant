@@ -187,11 +187,13 @@ public class Discordant {
             }
             if (tickCount % 1200 == 0) {
                 // Remove any expired pending verifications.
-                for (Map.Entry<Integer, VerificationData> e : pendingPlayers.entrySet()) {
+                final var iterator = pendingPlayers.entrySet().iterator();
+                while (iterator.hasNext()) {
+                    final var e = iterator.next();
                     VerificationData data = e.getValue();
                     if (currentTime > data.validUntil()) {
                         pendingPlayersUUID.remove(data.uuid());
-                        pendingPlayers.remove(e.getKey());
+                        iterator.remove();
                     }
                 }
             }
