@@ -35,15 +35,8 @@ public class ConfigManager {
                                      .create();
     }
 
-    public Path getConfigRoot() {
-        return configRoot;
-    }
-
     public void ensureConfigStructure() throws IOException {
-        final var linkedProfiles = configRoot.resolve("linked-profiles");
-
         Files.createDirectories(configRoot);
-        Files.createDirectories(linkedProfiles);
 
         if (!Files.exists(mainConfigPath)) {
             try {

@@ -21,7 +21,7 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
     }
 
     @Override
-    public @Nullable LinkedProfile get(UUID uuid) {
+    public @Nullable LinkedProfile getByPlayerId(UUID uuid) {
         final var path = getProfilePath(uuid);
         if (Files.exists(path)) {
             try (final var reader = new FileReader(path.toFile())) {
@@ -43,6 +43,7 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
         final var file = path.toFile();
 
         try {
+            Files.createDirectories(profileDirectory);
             final var created = file.createNewFile();
             if (!created) {
                 // TODO Report failure.
@@ -62,8 +63,8 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
     }
 
     @Override
-    public void delete(UUID uuid) {
-        final var path = getProfilePath(uuid);
+    public void delete(LinkedProfile profile) {
+        final var path = getProfilePath(profile.uuid());
         final var deleted = path.toFile().delete();
         if (!deleted) {
             // TODO Report failure so upstream code can notify that user if needed.

@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public class NullLinkedProfileRepository implements LinkedProfileRepository {
     @Override
-    public @Nullable LinkedProfile get(UUID uuid) {
+    public @Nullable LinkedProfile getByPlayerId(UUID uuid) {
         return null;
     }
 
@@ -15,6 +15,6 @@ public class NullLinkedProfileRepository implements LinkedProfileRepository {
     }
 
     @Override
-    public void delete(UUID uuid) {
+    public void delete(LinkedProfile profile) {
     }
 }

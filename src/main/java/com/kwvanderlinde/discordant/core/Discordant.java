@@ -5,10 +5,12 @@ import com.kwvanderlinde.discordant.core.config.DiscordMessageConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.ConfigProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
+import com.kwvanderlinde.discordant.core.discord.linkedprofiles.HashTableLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.LinkedProfile;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.LinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.NullDiscordApi;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.NullLinkedProfileRepository;
+import com.kwvanderlinde.discordant.core.discord.linkedprofiles.WriteThroughLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.VerificationData;
@@ -37,8 +39,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -81,7 +81,6 @@ public class Discordant {
     private DiscordantAppender logAppender;
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
-    private final HashMap<UUID, LinkedProfile> linkedPlayers = new HashMap<>();
     private final HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
     private final HashMap<Integer, VerificationData> pendingPlayers = new HashMap<>();
     private final HashMap<UUID, Integer> pendingPlayersUUID = new HashMap<>();
@@ -89,8 +88,6 @@ public class Discordant {
     private String botName;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
     private final Random r = new Random();
-
-    // TODO Mod initializer also included language support. We should find a way to do that without a dependency on minecraft
 
     public Discordant(Integration minecraftIntegration) throws ModLoadFailed, ConfigurationValidationFailed {
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
@@ -127,7 +124,10 @@ public class Discordant {
             throw new ModLoadFailed(e.getMessage(), e);
         }
 
-        linkedProfileRepository = new ConfigProfileRepository(configRoot.resolve("linked-profiles"));
+        linkedProfileRepository = new WriteThroughLinkedProfileRepository(
+                new HashTableLinkedProfileRepository(),
+                new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
+        );
         botName = discordApi.getBotName();
 
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
@@ -217,7 +217,7 @@ public class Discordant {
                 // If linking is enabled, actually use the discord details as the author.
                 final var guild = discordApi.getGuild();
                 if (config.enableAccountLinking && guild != null) {
-                    LinkedProfile linkedProfile = linkedPlayers.get(player.uuid());
+                    LinkedProfile linkedProfile = linkedProfileRepository.getByPlayerId(player.uuid());
                     if (linkedProfile != null) {
                         Member m = guild.getMemberById(linkedProfile.discordId());
                         if (m != null) {
@@ -236,16 +236,14 @@ public class Discordant {
                 return;
             }
 
-            final var linkedProfile = linkedProfileRepository.get(profile.uuid());
+            final var linkedProfile = linkedProfileRepository.getByPlayerId(profile.uuid());
             if (linkedProfile != null) {
-                // Load the profile into memory so it is available for later operations.
+                // Reverse map so we can look up profile by discord ID.
                 // TODO Is it worth handling edge case that there are existing entries? Would
                 //  not be correct for them to exist, but bugs or instability may cause it.
-                linkedPlayers.put(profile.uuid(), linkedProfile);
                 linkedPlayersByDiscordId.put(linkedProfile.discordId(), profile.name());
             }
-
-            if (config.forceLinking && linkedProfile == null) {
+            else if (config.forceLinking) {
                 // Profile does not exist. So send the user a code to verify with.
                 final int authCode = this.generateLinkCode(profile.uuid(), profile.name());
                 final var message = config.minecraft.messages.verificationDisconnect
@@ -275,10 +273,9 @@ public class Discordant {
 
             knownPlayerIds.remove(player.uuid());
             // Remove in-memory profile linking. Will be reloaded next login if enabled.
-            LinkedProfile profile = linkedPlayers.get(player.uuid());
+            final var profile = linkedProfileRepository.getByPlayerId(player.uuid());
             if (profile != null) {
                 linkedPlayersByDiscordId.remove(profile.discordId());
-                linkedPlayers.remove(player.uuid());
             }
         });
         minecraftIntegration.events().onPlayerDeath((player, deathMessage) -> {
@@ -381,28 +378,30 @@ public class Discordant {
         final var id = data.uuid();
 
         // TODO Avoid filesystem access here, and rely on the repository as needed.
-        if (!Files.exists(Paths.get(String.format("./config/discordant/linked-profiles/%s.json", id.toString())))) {
+        final var existingProfile = linkedProfileRepository.getByPlayerId(id);
+        if (existingProfile == null) {
             // Profile entry does not exist yet. Create it.
-            final var linkedProfile = new LinkedProfile(data.name(), id, author.getId());
-            linkedProfileRepository.put(linkedProfile);
+            final var newLinkedProfile = new LinkedProfile(data.name(), id, author.getId());
+            linkedProfileRepository.put(newLinkedProfile);
             pendingPlayersUUID.remove(id);
             pendingPlayers.remove(code);
             if (!config.forceLinking) {
+                // TODO Player lookup should be unnecessary since player.name() should be the same
+                //  as data.name(). But also why do we need to store the name?
                 final var player = getServer().getPlayer(id);
                 if (player != null) {
-                    linkedPlayers.put(player.uuid(), linkedProfile);
-                    linkedPlayersByDiscordId.put(linkedProfile.discordId(), player.name());
+                    linkedPlayersByDiscordId.put(newLinkedProfile.discordId(), player.name());
                 }
             }
             final var profile = new Profile() {
                 @Override
                 public UUID uuid() {
-                    return linkedProfile.uuid();
+                    return newLinkedProfile.uuid();
                 }
 
                 @Override
                 public String name() {
-                    return linkedProfile.name();
+                    return newLinkedProfile.name();
                 }
             };
             final var message = config.discord.messages.successfulVerification
@@ -410,27 +409,26 @@ public class Discordant {
             discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
 
             final var logMessage = String.format("Successfully linked discord account %s to minecraft account %s (%s)",
-                                                 linkedProfile.discordId(),
-                                                 linkedProfile.name(),
-                                                 linkedProfile.uuid().toString());
+                                                 newLinkedProfile.discordId(),
+                                                 newLinkedProfile.name(),
+                                                 newLinkedProfile.uuid().toString());
             logger.info(logMessage);
             return true;
         }
         else {
             // Profile entry already exists. Tell that to the command issuer.
-            LinkedProfile linkedProfile = linkedProfileRepository.get(id);
             final var guild = discordApi.getGuild();
-            if (linkedProfile != null && guild != null) {
-                Member m = guild.getMemberById(linkedProfile.discordId());
+            if (guild != null) {
+                Member m = guild.getMemberById(existingProfile.discordId());
                 final var profile = new Profile() {
                     @Override
                     public UUID uuid() {
-                        return linkedProfile.uuid();
+                        return existingProfile.uuid();
                     }
 
                     @Override
                     public String name() {
-                        return linkedProfile.name();
+                        return existingProfile.name();
                     }
                 };
                 final var message = config.discord.messages.alreadyLinked
@@ -444,11 +442,10 @@ public class Discordant {
     }
 
     public boolean removeLinkedProfile(UUID uuid) {
-        LinkedProfile profile = linkedProfileRepository.get(uuid);
+        LinkedProfile profile = linkedProfileRepository.getByPlayerId(uuid);
         if (profile != null) {
             linkedPlayersByDiscordId.remove(profile.discordId());
-            linkedPlayers.remove(uuid);
-            linkedProfileRepository.delete(uuid);
+            linkedProfileRepository.delete(profile);
             return true;
         }
         return false;
