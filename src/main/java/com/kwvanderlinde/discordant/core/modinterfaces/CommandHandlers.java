@@ -2,8 +2,6 @@ package com.kwvanderlinde.discordant.core.modinterfaces;
 
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 
-import java.util.function.Consumer;
-
 public class CommandHandlers {
     public LinkHandler link = (player, respondWith) -> {};
     public UnlinkHandler unlink = (player, respondWith) -> {};
