@@ -1,6 +1,4 @@
-package com.kwvanderlinde.discordant.core.linkedprofiles.api;
-
-import com.kwvanderlinde.discordant.core.linkedprofiles.api.LinkedProfile;
+package com.kwvanderlinde.discordant.core.linkedprofiles;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
@@ -17,8 +15,7 @@ public interface LinkedProfileRepository {
      * @param uuid The Minecraft player UUID.
      * @return The linked profile associated with the uuid, or null if there is none.
      */
-    @Nullable
-    LinkedProfile getByPlayerId(UUID uuid);
+    @Nullable LinkedProfile getByPlayerId(UUID uuid);
 
     /**
      * Adds or updates a linked profile.

@@ -2,8 +2,6 @@ package com.kwvanderlinde.discordant.core.linkedprofiles;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.kwvanderlinde.discordant.core.linkedprofiles.api.LinkedProfile;
-import com.kwvanderlinde.discordant.core.linkedprofiles.api.LinkedProfileRepository;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
