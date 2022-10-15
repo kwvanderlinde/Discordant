@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.core.linkedprofiles;
+package com.kwvanderlinde.discordant.core.linkedprofiles.api;
 
 import java.util.UUID;
 
