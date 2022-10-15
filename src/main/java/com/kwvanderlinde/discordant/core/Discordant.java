@@ -7,6 +7,7 @@ import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.HashTableLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
 import com.kwvanderlinde.discordant.core.discord.api.NullDiscordApi;
+import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.WriteThroughLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
@@ -26,6 +27,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -49,78 +51,63 @@ public class Discordant {
         try {
             return new Discordant(integration);
         }
-        catch (ConfigurationValidationFailed e) {
-            logger.error("Invalid discordant configuration: {}", e.getMessage());
-            return null;
-        }
-        catch (ModLoadFailed e) {
-            logger.error("Failed to load Discordant mod: {}", e.getMessage(), e);
+        catch (ModLoadFailed modLoadFailed) {
+            final var cause = modLoadFailed.getCause();
+            if (cause instanceof ConfigurationValidationFailed configurationValidationFailed) {
+                logger.error("Invalid discordant configuration: {}", configurationValidationFailed.getMessage());
+            }
+            else {
+                logger.error("Failed to load Discordant mod: {}", modLoadFailed.getMessage(), modLoadFailed);
+            }
             return null;
         }
     }
 
+    private final TickedClock clock;
+    private final ConfigManager configManager;
+    private final LinkedProfileRepository linkedProfileRepository;
+    private final EmbedFactory embedFactory;
+    private final ServerCache serverCache;
+
     private @Nullable Server server;
 
-    private final TickedClock clock;
-    private ServerCache serverCache;
+    // region Configuration-dependent services.
     private DiscordApi discordApi = new NullDiscordApi();
-    private DiscordantConfig config;
+    private DiscordantConfig config = new DiscordantConfig();
     private LinkedProfileManager linkedProfileManager;
     private DiscordantAppender logAppender;
+    private ScopeFactory scopeFactory;
+    // endregion
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
-    private long currentTime = System.currentTimeMillis();
-    private final ScopeFactory scopeFactory;
-    private final EmbedFactory embedFactory;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
 
-    public Discordant(Integration minecraftIntegration) throws ModLoadFailed, ConfigurationValidationFailed {
+    public Discordant(Integration minecraftIntegration) throws ModLoadFailed {
         this.clock = new TickedClock();
 
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
-
-        this.serverCache = new FileBackedServerCache(configRoot.resolve("cache"));
-
-        // The crucial bits are whether we can load our configuration and whether JDA can
-        // initialize, so do those next to one another. Without those there is no hope.
-        try {
-            final var manager = new ConfigManager(configRoot);
-            manager.ensureConfigStructure();
-            config = manager.readDiscordLinkSettings();
-
-            final var discordConfig = config.discord;
-            if ("".equals(discordConfig.token) || null == discordConfig.token) {
-                throw new ConfigurationValidationFailed("A bot token must be provided in config.json!");
-            }
-            if ("".equals(discordConfig.serverId) || null == discordConfig.serverId) {
-                throw new ConfigurationValidationFailed("A server ID must be provided in config.json!");
-            }
-            if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
-                throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
-            }
-            if (config.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
-                throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
-            }
-
-            discordApi = new JdaDiscordApi(config, serverCache);
-        }
-        catch (ConfigurationValidationFailed e) {
-            throw e;
-        }
-        catch (Exception e) {
-            throw new ModLoadFailed(e.getMessage(), e);
-        }
-
-        final var linkedProfileRepository = new WriteThroughLinkedProfileRepository(
+        linkedProfileRepository = new WriteThroughLinkedProfileRepository(
                 new HashTableLinkedProfileRepository(),
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
-        linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
-        scopeFactory = new ScopeFactory(clock, config, discordApi.getBotName());
         embedFactory = new EmbedFactory();
 
-        logAppender = new DiscordantAppender(Level.INFO, discordApi);
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
+        this.serverCache = new FileBackedServerCache(configRoot.resolve("cache"));
+
+        configManager = new ConfigManager(configRoot);
+        try {
+            configManager.ensureConfigStructure();
+        }
+        catch (IOException e) {
+            throw new ModLoadFailed(e);
+        }
+
+        try {
+            loadConfig();
+        }
+        catch (ConfigurationValidationFailed e) {
+            throw new ModLoadFailed(e);
+        }
 
         minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
 
@@ -170,7 +157,7 @@ public class Discordant {
             discordApi = new NullDiscordApi();
         });
         minecraftIntegration.events().onTickStart((server) -> {
-            currentTime = System.currentTimeMillis();
+            clock.tick();
         });
         minecraftIntegration.events().onTickEnd(server -> {
             int tickCount = server.getTickCount();
@@ -312,6 +299,43 @@ public class Discordant {
         };
     }
 
+    private void loadConfig() throws ConfigurationValidationFailed {
+        try {
+            config = configManager.readDiscordLinkSettings();
+
+            final var discordConfig = config.discord;
+            if ("".equals(discordConfig.token) || null == discordConfig.token) {
+                throw new ConfigurationValidationFailed("A bot token must be provided in config.json!");
+            }
+            if ("".equals(discordConfig.serverId) || null == discordConfig.serverId) {
+                throw new ConfigurationValidationFailed("A server ID must be provided in config.json!");
+            }
+            if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
+                throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
+            }
+            if (config.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
+                throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
+            }
+
+            discordApi = new JdaDiscordApi(config, serverCache);
+        }
+        catch (ConfigurationValidationFailed e) {
+            throw e;
+        }
+        catch (Exception e) {
+            throw new ConfigurationValidationFailed("Unhandled exception", e);
+        }
+
+        linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
+        scopeFactory = new ScopeFactory(clock, config, discordApi.getBotName());
+
+        logAppender = new DiscordantAppender(Level.INFO, discordApi);
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
+
+        // TODO Need to disable commands based on new config.
+        //minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
+    }
+
     public @Nullable Server getServer() {
         return server;
     }
@@ -330,9 +354,5 @@ public class Discordant {
             }
         }
         return msg;
-    }
-
-    public long getCurrentTime() {
-        return currentTime;
     }
 }
