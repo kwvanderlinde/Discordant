@@ -4,6 +4,8 @@ import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.ServerCache;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.DiscordListener;
+import com.kwvanderlinde.discordant.core.discord.messagehandlers.DefaultMessageHandler;
+import com.kwvanderlinde.discordant.core.discord.messagehandlers.MentionMessageHandler;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -25,6 +27,7 @@ public class JdaDiscordApi implements DiscordApi {
     private static final Logger logger = LogManager.getLogger(JdaDiscordApi.class);
 
     private final @Nonnull JDA jda;
+    private final @Nonnull DiscordListener listener;
     private final @Nonnull DiscordantConfig config;
     private final @Nonnull String botName;
     private final @Nullable TextChannel chatChannel;
@@ -37,11 +40,12 @@ public class JdaDiscordApi implements DiscordApi {
     public JdaDiscordApi(@Nonnull Discordant discordant, @Nonnull ServerCache cache) throws InterruptedException {
         this.config = discordant.getConfig();
 
+        listener = new DiscordListener(config.discord);
         jda = JDABuilder.createDefault(config.discord.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
-                        .addEventListeners(new Object[]{new DiscordListener(this, discordant, config)})
+                        .addEventListeners(new Object[]{ listener })
                         .build();
         jda.awaitReady();
 
@@ -88,6 +92,11 @@ public class JdaDiscordApi implements DiscordApi {
         if (!stopped) {
             ch.sendMessageEmbeds(e).submit(handleRateLimitations);
         }
+    }
+
+    @Override
+    public void addListener(MessageListener messageListener) {
+        this.listener.addListener(messageListener);
     }
 
     @Override

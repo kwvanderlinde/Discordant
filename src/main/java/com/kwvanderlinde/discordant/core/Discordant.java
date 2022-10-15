@@ -11,6 +11,8 @@ import com.kwvanderlinde.discordant.core.discord.linkedprofiles.LinkedProfileRep
 import com.kwvanderlinde.discordant.core.discord.api.NullDiscordApi;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.NullLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.WriteThroughLinkedProfileRepository;
+import com.kwvanderlinde.discordant.core.discord.messagehandlers.DefaultMessageHandler;
+import com.kwvanderlinde.discordant.core.discord.messagehandlers.MentionMessageHandler;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.linkedprofiles.VerificationData;
@@ -115,6 +117,14 @@ public class Discordant {
             }
 
             discordApi = new JdaDiscordApi(this, serverCache);
+
+            discordApi.addListener(new DiscordantMessageListener(
+                    this,
+                    discordApi,
+                    config.enableMentions
+                            ? new MentionMessageHandler(this)
+                            : new DefaultMessageHandler()
+            ));
         }
         catch (ConfigurationValidationFailed e) {
             throw e;
