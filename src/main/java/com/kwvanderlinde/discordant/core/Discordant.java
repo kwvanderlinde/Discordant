@@ -5,40 +5,28 @@ import com.kwvanderlinde.discordant.core.linkedprofiles.ConfigProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.HashTableLinkedProfileRepository;
-import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfile;
-import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileRepository;
+import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
 import com.kwvanderlinde.discordant.core.discord.api.NullDiscordApi;
-import com.kwvanderlinde.discordant.core.linkedprofiles.NullLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.WriteThroughLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
-import com.kwvanderlinde.discordant.core.linkedprofiles.VerificationData;
-import com.kwvanderlinde.discordant.core.messages.PlainTextRenderer;
-import com.kwvanderlinde.discordant.core.messages.ScopeUtil;
 import com.kwvanderlinde.discordant.core.messages.scopes.AdvancementScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.ChatScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.DeathScope;
-import com.kwvanderlinde.discordant.core.messages.scopes.DiscordUserScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.NilScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
-import com.kwvanderlinde.discordant.core.messages.scopes.PlayerScope;
-import com.kwvanderlinde.discordant.core.messages.scopes.ProfileScope;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
-import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
-import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -76,18 +64,15 @@ public class Discordant {
     private ServerCache serverCache;
     private DiscordApi discordApi = new NullDiscordApi();
     private DiscordantConfig config;
-    private LinkedProfileRepository linkedProfileRepository = new NullLinkedProfileRepository();
+    private LinkedProfileManager linkedProfileManager;
     private DiscordantAppender logAppender;
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
-    private final HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
-    private final HashMap<UUID, VerificationData> pendingLinkVerification = new HashMap<>();
     private long currentTime = System.currentTimeMillis();
     private String botName;
     private final ScopeFactory scopeFactory;
     private final EmbedFactory embedFactory;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
-    private final Random r = new Random();
 
     public Discordant(Integration minecraftIntegration) throws ModLoadFailed, ConfigurationValidationFailed {
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
@@ -124,10 +109,11 @@ public class Discordant {
             throw new ModLoadFailed(e.getMessage(), e);
         }
 
-        linkedProfileRepository = new WriteThroughLinkedProfileRepository(
+        final var linkedProfileRepository = new WriteThroughLinkedProfileRepository(
                 new HashTableLinkedProfileRepository(),
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
+        linkedProfileManager = new LinkedProfileManager(config.linking, linkedProfileRepository);
         botName = discordApi.getBotName();
         scopeFactory = new ScopeFactory(this);
         embedFactory = new EmbedFactory();
@@ -142,6 +128,7 @@ public class Discordant {
 
             discordApi.addHandler(new DiscordantMessageHandler(
                     this,
+                    linkedProfileManager,
                     scopeFactory,
                     embedFactory,
                     config,
@@ -197,15 +184,7 @@ public class Discordant {
                 }
             }
             if (tickCount % 1200 == 0) {
-                // Remove any expired pending verifications.
-                final var iterator = pendingLinkVerification.entrySet().iterator();
-                while (iterator.hasNext()) {
-                    final var e = iterator.next();
-                    VerificationData data = e.getValue();
-                    if (currentTime > data.validUntil()) {
-                        iterator.remove();
-                    }
-                }
+                linkedProfileManager.clearExpiredVerifications();
             }
         });
 
@@ -217,19 +196,19 @@ public class Discordant {
             final var message = config.discord.messages.playerChat
                     .instantiate(new ChatScope(
                             // TODO Look up the linked profile and pass the corresponding discord user.
-                            playerScope(player.profile(), null),
+                            scopeFactory.playerScope(player.profile(), getServer(), null),
                             chatMessage
                     ));
             final var e = embedFactory.embedBuilder(message);
 
-            e.setAuthor(player.name(), null, getPlayerIconUrl(player.profile()));
+            e.setAuthor(player.name(), null, scopeFactory.getPlayerIconUrl(player.profile(), getServer()));
             {
                 // If linking is enabled, actually use the discord details as the author.
                 final var guild = discordApi.getGuild();
                 if (config.linking.enabled && guild != null) {
-                    LinkedProfile linkedProfile = linkedProfileRepository.getByPlayerId(player.uuid());
-                    if (linkedProfile != null) {
-                        Member m = guild.getMemberById(linkedProfile.discordId());
+                    final var discordId = linkedProfileManager.getDiscordIdForPlayerId(player.uuid());
+                    if (discordId != null) {
+                        Member m = guild.getMemberById(discordId);
                         if (m != null) {
                             e.setAuthor(m.getEffectiveName(), null, m.getEffectiveAvatarUrl());
                         }
@@ -246,28 +225,21 @@ public class Discordant {
                 return;
             }
 
-            final var linkedProfile = linkedProfileRepository.getByPlayerId(profile.uuid());
-            if (linkedProfile != null) {
-                // Reverse map so we can look up profile by discord ID.
-                // TODO Is it worth handling edge case that there are existing entries? Would
-                //  not be correct for them to exist, but bugs or instability may cause it.
-                linkedPlayersByDiscordId.put(linkedProfile.discordId(), profile.name());
-            }
-            else if (config.linking.required) {
+            final var isLinked = linkedProfileManager.ensureProfileIsLinked(profile);
+            if (!isLinked && config.linking.required) {
                 // Profile does not exist. So send the user a code to verify with.
-                final var authCode = this.generateLinkCode(profile.uuid(), profile.name());
+                final var authCode = linkedProfileManager.generateLinkCode(profile.uuid(), profile.name());
                 final var message = config.minecraft.messages.verificationDisconnect
                         .instantiate(new PendingVerificationScope(scopeFactory.serverScope(server), authCode));
                 reject.withReason(message);
             }
-
         });
         minecraftIntegration.events().onPlayerJoin((player) -> {
             knownPlayerIds.add(player.uuid());
 
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerJoin
-                    .instantiate(playerScope(player.profile(), null));
+                    .instantiate(scopeFactory.playerScope(player.profile(), getServer(), null));
 
             discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
         });
@@ -278,20 +250,17 @@ public class Discordant {
 
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerLeave
-                    .instantiate(playerScope(player.profile(), null));
+                    .instantiate(scopeFactory.playerScope(player.profile(), getServer(), null));
             discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
 
             knownPlayerIds.remove(player.uuid());
             // Remove in-memory profile linking. Will be reloaded next login if enabled.
-            final var profile = linkedProfileRepository.getByPlayerId(player.uuid());
-            if (profile != null) {
-                linkedPlayersByDiscordId.remove(profile.discordId());
-            }
+            linkedProfileManager.unloadProfile(player.profile());
         });
         minecraftIntegration.events().onPlayerDeath((player, deathMessage) -> {
             final var message = config.discord.messages.playerDeath
                     .instantiate(new DeathScope(
-                            playerScope(player.profile(), null),
+                            scopeFactory.playerScope(player.profile(), getServer(), null),
                             deathMessage
                     ));
             discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
@@ -300,7 +269,7 @@ public class Discordant {
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerAdvancement
                     .instantiate(new AdvancementScope(
-                            playerScope(player.profile(), null),
+                            scopeFactory.playerScope(player.profile(), getServer(), null),
                             advancement.name(),
                             advancement.title(),
                             advancement.description()
@@ -311,12 +280,12 @@ public class Discordant {
         final var commandHandlers = minecraftIntegration.commandsHandlers();
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
-            final var authCode = generateLinkCode(player.uuid(), player.name());
+            final var authCode = linkedProfileManager.generateLinkCode(player.uuid(), player.name());
             final var scope = new PendingVerificationScope(scopeFactory.serverScope(getServer()), authCode);
             respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
         };
         commandHandlers.unlink = (player, respondWith) -> {
-            final var wasDeleted = removeLinkedProfile(player.uuid());
+            final var wasDeleted = linkedProfileManager.removeLinkedProfile(player.uuid());
             if (wasDeleted) {
                 final var component = config.minecraft.messages.codeUnlinkMsg
                         .instantiate(new NilScope());
@@ -354,126 +323,6 @@ public class Discordant {
         return config;
     }
 
-    public @Nullable String getLinkedPlayerNameForDiscordId(String discordId) {
-        return linkedPlayersByDiscordId.get(discordId);
-    }
-
-    public String generateLinkCode(UUID uuid, String name) {
-        if (pendingLinkVerification.containsKey(uuid)) {
-            return pendingLinkVerification.get(uuid).token();
-        }
-
-        final var authCode = r.nextInt(100_000, 1_000_000);
-        final var data = new VerificationData(name, uuid, authCode, currentTime + config.linking.pendingTimeout);
-        pendingLinkVerification.put(uuid, data);
-
-        return data.token();
-    }
-
-    public boolean verifyLinkedProfile(final MessageChannel channelToRespondIn, final User author, final String verificationToken) {
-        final var parts = verificationToken.split("\\|", 2);
-        if (parts.length != 2) {
-            logger.warn("Verification attempt with invalid token: {}", verificationToken);
-            return false;
-        }
-
-        final UUID uuid;
-        try {
-            uuid = UUID.fromString(parts[0]);
-        }
-        catch (IllegalArgumentException e) {
-            logger.warn("Verification attempt with invalid UUID: {}", parts[0]);
-            return false;
-        }
-
-        final var verificationCode = parts[1];
-        if (verificationCode.length() != 6 || !verificationCode.matches("[0-9]+")) {
-            logger.warn("Verification attempt with invalid authentication code: {}", verificationCode);
-            return false;
-        }
-
-        final var code = Integer.parseInt(verificationCode);
-        final var data = pendingLinkVerification.get(uuid);
-        if (data == null) {
-            logger.warn("Verification attempt for player with no pending verification: {}", uuid);
-            return false;
-        }
-        if (data.code() != code) {
-            logger.warn("Verification attempt for player with incorrect code: {}, {}", uuid, code);
-            return false;
-        }
-
-        final var existingProfile = linkedProfileRepository.getByPlayerId(uuid);
-        if (existingProfile == null) {
-            // Profile entry does not exist yet. Create it.
-            final var newLinkedProfile = new LinkedProfile(data.name(), uuid, author.getId());
-            linkedProfileRepository.put(newLinkedProfile);
-            pendingLinkVerification.remove(uuid);
-            if (!config.linking.required) {
-                // TODO Player lookup should be unnecessary since player.name() should be the same
-                //  as data.name(). But also why do we need to store the name?
-                final var player = getServer().getPlayer(uuid);
-                if (player != null) {
-                    linkedPlayersByDiscordId.put(newLinkedProfile.discordId(), player.name());
-                }
-            }
-            final var profile = new Profile() {
-                @Override
-                public UUID uuid() {
-                    return newLinkedProfile.uuid();
-                }
-
-                @Override
-                public String name() {
-                    return newLinkedProfile.name();
-                }
-            };
-            final var message = config.discord.messages.successfulVerification
-                    .instantiate(playerScope(profile, author));
-            discordApi.sendEmbed(channelToRespondIn, embedFactory.embedBuilder(message).build());
-
-            final var logMessage = String.format("Successfully linked discord account %s to minecraft account %s (%s)",
-                                                 newLinkedProfile.discordId(),
-                                                 newLinkedProfile.name(),
-                                                 newLinkedProfile.uuid().toString());
-            logger.info(logMessage);
-            return true;
-        }
-        else {
-            // Profile entry already exists. Tell that to the command issuer.
-            final var guild = discordApi.getGuild();
-            if (guild != null) {
-                Member m = guild.getMemberById(existingProfile.discordId());
-                final var profile = new Profile() {
-                    @Override
-                    public UUID uuid() {
-                        return existingProfile.uuid();
-                    }
-
-                    @Override
-                    public String name() {
-                        return existingProfile.name();
-                    }
-                };
-                final var message = config.discord.messages.alreadyLinked
-                        .instantiate(playerScope(profile, m == null ? null : m.getUser()));
-                discordApi.sendEmbed(channelToRespondIn, embedFactory.embedBuilder(message).build());
-                pendingLinkVerification.remove(uuid);
-            }
-            return false;
-        }
-    }
-
-    public boolean removeLinkedProfile(UUID uuid) {
-        LinkedProfile profile = linkedProfileRepository.getByPlayerId(uuid);
-        if (profile != null) {
-            linkedPlayersByDiscordId.remove(profile.discordId());
-            linkedProfileRepository.delete(profile);
-            return true;
-        }
-        return false;
-    }
-
     private String parseDiscordMentions(String msg) {
         final var guild = discordApi.getGuild();
         if (guild != null) {
@@ -492,40 +341,5 @@ public class Discordant {
 
     public long getCurrentTime() {
         return currentTime;
-    }
-
-    private ProfileScope profileScope(Profile profile) {
-        return new ProfileScope(
-                scopeFactory.serverScope(getServer()),
-                profile.uuid(),
-                profile.name()
-        );
-    }
-
-    private PlayerScope playerScope(Profile profile, User user) {
-        return new PlayerScope(
-                profileScope(profile),
-                (user == null)
-                        ? new DiscordUserScope("", "", "")
-                        : new DiscordUserScope(user.getId(), user.getName(), user.getAsTag()),
-                getPlayerIconUrl(profile),
-                getAvatarUrls(profile));
-    }
-
-    private String getPlayerIconUrl(Profile profile) {
-        final var scopeValues = profileScope(profile).values();
-        return ScopeUtil.instantiate(config.playerIconUrl, scopeValues)
-                        .reduce(PlainTextRenderer.instance());
-    }
-
-    private Map<String, String> getAvatarUrls(Profile profile) {
-        final var result = new HashMap<String, String>();
-        final var scopeValues = profileScope(profile).values();
-        for (final var entry : config.avatarUrls.entrySet()) {
-            final var url = ScopeUtil.instantiate(entry.getValue(), scopeValues)
-                                     .reduce(PlainTextRenderer.instance());
-            result.put(entry.getKey(), url);
-        }
-        return result;
     }
 }

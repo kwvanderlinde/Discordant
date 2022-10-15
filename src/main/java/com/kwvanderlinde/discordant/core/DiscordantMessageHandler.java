@@ -3,7 +3,9 @@ package com.kwvanderlinde.discordant.core;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.MessageHandler;
+import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
+import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -14,6 +16,7 @@ import javax.annotation.Nonnull;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -23,6 +26,7 @@ public class DiscordantMessageHandler implements MessageHandler {
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
     private final Discordant discordant;
+    private final LinkedProfileManager linkedProfileManager;
     private final ScopeFactory scopeFactory;
     private final EmbedFactory embedFactory;
     private final DiscordantConfig config;
@@ -30,12 +34,14 @@ public class DiscordantMessageHandler implements MessageHandler {
     private final DiscordApi discordApi;
 
     public DiscordantMessageHandler(@Nonnull Discordant discordant,
+                                    @Nonnull LinkedProfileManager linkedProfileManager,
                                     @Nonnull ScopeFactory scopeFactory,
                                     @Nonnull EmbedFactory embedFactory,
                                     @Nonnull DiscordantConfig config,
                                     @Nonnull Server server,
                                     @Nonnull DiscordApi discordApi) {
         this.discordant = discordant;
+        this.linkedProfileManager = linkedProfileManager;
         this.scopeFactory = scopeFactory;
         this.embedFactory = embedFactory;
         this.config = config;
@@ -67,7 +73,68 @@ public class DiscordantMessageHandler implements MessageHandler {
             return;
         }
 
-        discordant.verifyLinkedProfile(e.getChannel(), e.getAuthor(), message);
+        final var result = linkedProfileManager.verifyLinkedProfile(e.getChannel(), e.getAuthor(), message);
+        if (result instanceof LinkedProfileManager.InvalidToken invalidToken) {
+            logger.warn("Verification attempt with invalid token: {}", invalidToken.token());
+        }
+        else if (result instanceof LinkedProfileManager.InvalidUuid invalidUuid) {
+            logger.warn("Verification attempt with invalid UUID: {}", invalidUuid.uuid());
+        }
+        else if (result instanceof LinkedProfileManager.InvalidCode invalidCode) {
+            logger.warn("Verification attempt with invalid authentication code: {}", invalidCode.code());
+        }
+        else if (result instanceof LinkedProfileManager.NoPendingVerification noPendingVerification) {
+            logger.warn("Verification attempt for player with no pending verification: {}", noPendingVerification.uuid());
+        }
+        else if (result instanceof LinkedProfileManager.IncorrectCode incorrectCode) {
+            logger.warn("Verification attempt for player with incorrect code: {}, {}", incorrectCode.uuid(), incorrectCode.code());
+        }
+        else if (result instanceof LinkedProfileManager.AlreadyLinked alreadyLinked) {
+            // Profile entry already exists. Tell that to the command issuer.
+            logger.warn("Verification attempt when already linked: {}", message);
+            final var existingProfile = alreadyLinked.existingProfile();
+            final var guild = discordApi.getGuild();
+            if (guild != null) {
+                Member m = guild.getMemberById(existingProfile.discordId());
+                final var profile = new Profile() {
+                    @Override
+                    public UUID uuid() {
+                        return existingProfile.uuid();
+                    }
+
+                    @Override
+                    public String name() {
+                        return existingProfile.name();
+                    }
+                };
+                final var response = config.discord.messages.alreadyLinked
+                        .instantiate(scopeFactory.playerScope(profile, server, m == null ? null : m.getUser()));
+                discordApi.sendEmbed(e.getChannel(), embedFactory.embedBuilder(response).build());
+            }
+        }
+        else if (result instanceof LinkedProfileManager.SuccessfulLink successfulLink) {
+            // Profile entry does not exist yet. Create it.
+            final var newLinkedProfile = successfulLink.newProfile();
+            final var profile = new Profile() {
+                @Override
+                public UUID uuid() {
+                    return newLinkedProfile.uuid();
+                }
+
+                @Override
+                public String name() {
+                    return newLinkedProfile.name();
+                }
+            };
+            final var response = config.discord.messages.successfulVerification
+                    .instantiate(scopeFactory.playerScope(profile, server, e.getAuthor()));
+            discordApi.sendEmbed(e.getChannel(), embedFactory.embedBuilder(response).build());
+
+            logger.info("Successfully linked discord account {} to minecraft account {} ({})",
+                        newLinkedProfile.discordId(),
+                        newLinkedProfile.name(),
+                        newLinkedProfile.uuid().toString());
+        }
     }
 
 
@@ -100,7 +167,7 @@ public class DiscordantMessageHandler implements MessageHandler {
                 if (s.startsWith("!")) {
                     s = s.substring(1);
                 }
-                String name = discordant.getLinkedPlayerNameForDiscordId(s);
+                String name = linkedProfileManager.getLinkedPlayerNameForDiscordId(s);
                 if (config.linking.enabled && config.enableMentions && name != null) {
                     playerNamesToNotify.add(name.toLowerCase());
                     message = message.replaceAll("<(@.|@)" + s + ">", "@" + name);
