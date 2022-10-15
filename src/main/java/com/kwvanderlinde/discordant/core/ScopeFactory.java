@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.core;
 
+import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.messages.PlainTextRenderer;
 import com.kwvanderlinde.discordant.core.messages.ScopeUtil;
 import com.kwvanderlinde.discordant.core.messages.scopes.DiscordUserScope;
@@ -17,14 +18,16 @@ import java.util.Map;
 
 public class ScopeFactory {
     private final Discordant discordant;
+    private final DiscordantConfig config;
 
-    public ScopeFactory(Discordant discordant) {
+    public ScopeFactory(Discordant discordant, DiscordantConfig config) {
         this.discordant = discordant;
+        this.config = config;
     }
 
     public ServerScope serverScope(@Nonnull Server server) {
         return new ServerScope(
-                discordant.getConfig().minecraft.serverName,
+                config.minecraft.serverName,
                 discordant.getBotName(),
                 server.motd(),
                 server.getPlayerCount(),
@@ -54,14 +57,12 @@ public class ScopeFactory {
 
     public String getPlayerIconUrl(Profile profile, Server server) {
         final var scopeValues = profileScope(profile, server).values();
-        final var config = discordant.getConfig();
         return ScopeUtil.instantiate(config.playerIconUrl, scopeValues)
                         .reduce(PlainTextRenderer.instance());
     }
 
     public Map<String, String> getAvatarUrls(Profile profile, Server server) {
         final var result = new HashMap<String, String>();
-        final var config = discordant.getConfig();
         final var scopeValues = profileScope(profile, server).values();
         for (final var entry : config.avatarUrls.entrySet()) {
             final var url = ScopeUtil.instantiate(entry.getValue(), scopeValues)

@@ -115,7 +115,7 @@ public class Discordant {
         );
         linkedProfileManager = new LinkedProfileManager(config.linking, linkedProfileRepository);
         botName = discordApi.getBotName();
-        scopeFactory = new ScopeFactory(this);
+        scopeFactory = new ScopeFactory(this, config);
         embedFactory = new EmbedFactory();
 
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
@@ -317,10 +317,6 @@ public class Discordant {
 
     public String getBotName() {
         return botName;
-    }
-
-    public DiscordantConfig getConfig() {
-        return config;
     }
 
     private String parseDiscordMentions(String msg) {
