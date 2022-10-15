@@ -87,6 +87,7 @@ public class Discordant {
     private long currentTime = System.currentTimeMillis();
     private String botName;
     private final ScopeFactory scopeFactory;
+    private final EmbedFactory embedFactory;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
     private final Random r = new Random();
 
@@ -131,6 +132,7 @@ public class Discordant {
         );
         botName = discordApi.getBotName();
         scopeFactory = new ScopeFactory(this);
+        embedFactory = new EmbedFactory();
 
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
@@ -143,6 +145,7 @@ public class Discordant {
             discordApi.addHandler(new DiscordantMessageHandler(
                     this,
                     scopeFactory,
+                    embedFactory,
                     config,
                     server,
                     discordApi
@@ -151,7 +154,7 @@ public class Discordant {
             // TODO Attach server icon as a thumbnail or image if possible.
             final var message = config.discord.messages.serverStart
                     .instantiate(scopeFactory.serverScope(server));
-            discordApi.sendEmbed(buildMessageEmbed(message).build());
+            discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
 
             // Update the channel topic.
             final var topic = config.discord.topics.channelTopic
@@ -172,7 +175,7 @@ public class Discordant {
             {
                 final var message = config.discord.messages.serverStop
                         .instantiate(scopeFactory.serverScope(server));
-                discordApi.sendEmbed(buildMessageEmbed(message).build());
+                discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
             }
         });
         minecraftIntegration.events().onServerStopped((server) -> {
@@ -219,7 +222,7 @@ public class Discordant {
                             playerScope(player.profile(), null),
                             chatMessage
                     ));
-            final var e = buildMessageEmbed(message);
+            final var e = embedFactory.embedBuilder(message);
 
             e.setAuthor(player.name(), null, getPlayerIconUrl(player.profile()));
             {
@@ -268,7 +271,7 @@ public class Discordant {
             final var message = config.discord.messages.playerJoin
                     .instantiate(playerScope(player.profile(), null));
 
-            discordApi.sendEmbed(buildMessageEmbed(message).build());
+            discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
         });
         minecraftIntegration.events().onPlayerDisconnect(player -> {
             if (!knownPlayerIds.contains(player.uuid())) {
@@ -278,7 +281,7 @@ public class Discordant {
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerLeave
                     .instantiate(playerScope(player.profile(), null));
-            discordApi.sendEmbed(buildMessageEmbed(message).build());
+            discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
 
             knownPlayerIds.remove(player.uuid());
             // Remove in-memory profile linking. Will be reloaded next login if enabled.
@@ -293,7 +296,7 @@ public class Discordant {
                             playerScope(player.profile(), null),
                             deathMessage
                     ));
-            discordApi.sendEmbed(buildMessageEmbed(message).build());
+            discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
         });
         minecraftIntegration.events().onPlayerAdvancement((player, advancement) -> {
             // TODO Look up the linked profile and pass the corresponding discord user.
@@ -304,7 +307,7 @@ public class Discordant {
                             advancement.title(),
                             advancement.description()
                     ));
-            discordApi.sendEmbed(buildMessageEmbed(message).build());
+            discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
         });
 
         final var commandHandlers = minecraftIntegration.commandsHandlers();
@@ -429,7 +432,7 @@ public class Discordant {
             };
             final var message = config.discord.messages.successfulVerification
                     .instantiate(playerScope(profile, author));
-            discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
+            discordApi.sendEmbed(channelToRespondIn, embedFactory.embedBuilder(message).build());
 
             final var logMessage = String.format("Successfully linked discord account %s to minecraft account %s (%s)",
                                                  newLinkedProfile.discordId(),
@@ -456,7 +459,7 @@ public class Discordant {
                 };
                 final var message = config.discord.messages.alreadyLinked
                         .instantiate(playerScope(profile, m == null ? null : m.getUser()));
-                discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
+                discordApi.sendEmbed(channelToRespondIn, embedFactory.embedBuilder(message).build());
                 pendingLinkVerification.remove(uuid);
             }
             return false;
@@ -471,26 +474,6 @@ public class Discordant {
             return true;
         }
         return false;
-    }
-
-    public static EmbedBuilder buildMessageEmbed(DiscordMessageConfig<NilScope> config) {
-        final var e = new EmbedBuilder();
-        if (config.title != null) {
-            e.setTitle(config.title);
-        }
-        if (config.color != null) {
-            e.setColor(config.color.getRGB());
-        }
-        if (config.image != null) {
-            e.setImage(config.image);
-        }
-        if (config.thumbnail != null) {
-            e.setThumbnail(config.thumbnail);
-        }
-        if (config.description != null) {
-            e.setDescription(config.description);
-        }
-        return e;
     }
 
     private String parseDiscordMentions(String msg) {

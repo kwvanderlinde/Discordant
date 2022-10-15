@@ -24,13 +24,20 @@ public class DiscordantMessageHandler implements MessageHandler {
 
     private final Discordant discordant;
     private final ScopeFactory scopeFactory;
+    private final EmbedFactory embedFactory;
     private final DiscordantConfig config;
     private final Server server;
     private final DiscordApi discordApi;
 
-    public DiscordantMessageHandler(@Nonnull Discordant discordant, @Nonnull ScopeFactory scopeFactory, @Nonnull DiscordantConfig config, @Nonnull Server server, @Nonnull DiscordApi discordApi) {
+    public DiscordantMessageHandler(@Nonnull Discordant discordant,
+                                    @Nonnull ScopeFactory scopeFactory,
+                                    @Nonnull EmbedFactory embedFactory,
+                                    @Nonnull DiscordantConfig config,
+                                    @Nonnull Server server,
+                                    @Nonnull DiscordApi discordApi) {
         this.discordant = discordant;
         this.scopeFactory = scopeFactory;
+        this.embedFactory = embedFactory;
         this.config = config;
         this.server = server;
         this.discordApi = discordApi;
@@ -70,13 +77,13 @@ public class DiscordantMessageHandler implements MessageHandler {
             if (players.isEmpty()) {
                 final var message = config.discord.messages.noPlayers
                         .instantiate(scopeFactory.serverScope(server));
-                discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
+                discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
             }
             else {
                 final var message = config.discord.messages.onlinePlayers
                         .instantiate(scopeFactory.serverScope(server));
 
-                discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
+                discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
             }
         }
     }
