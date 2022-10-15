@@ -93,8 +93,8 @@ public class JdaDiscordApi implements DiscordApi {
     }
 
     @Override
-    public void addListener(MessageListener messageListener) {
-        this.listener.addListener(messageListener);
+    public void addListener(MessageHandler messageHandler) {
+        this.listener.addListener(messageHandler);
     }
 
     @Override

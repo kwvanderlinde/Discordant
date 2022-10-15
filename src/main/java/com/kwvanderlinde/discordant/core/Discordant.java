@@ -116,7 +116,7 @@ public class Discordant {
 
             discordApi = new JdaDiscordApi(this, serverCache);
 
-            discordApi.addListener(new DiscordantMessageListener(
+            discordApi.addListener(new DiscordantMessageHandler(
                     this,
                     discordApi
             ));

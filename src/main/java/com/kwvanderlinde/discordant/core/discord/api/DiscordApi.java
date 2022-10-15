@@ -8,7 +8,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 public interface DiscordApi extends AutoCloseable {
-    void addListener(MessageListener messageListener);
+    void addListener(MessageHandler messageHandler);
 
     @Override
     void close();

@@ -1,7 +1,7 @@
 package com.kwvanderlinde.discordant.core;
 
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
-import com.kwvanderlinde.discordant.core.discord.api.MessageListener;
+import com.kwvanderlinde.discordant.core.discord.api.MessageHandler;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
@@ -14,15 +14,15 @@ import java.util.Set;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class DiscordantMessageListener implements MessageListener {
-    private static final Logger logger = LogManager.getLogger(DiscordantMessageListener.class);
+public class DiscordantMessageHandler implements MessageHandler {
+    private static final Logger logger = LogManager.getLogger(DiscordantMessageHandler.class);
     private final Pattern pattern = Pattern.compile("(?<=!\\+).+?(?=!\\+|$|\\s)");
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
     private final Discordant discordant;
     private final DiscordApi discordApi;
 
-    public DiscordantMessageListener(Discordant discordant, DiscordApi discordApi) {
+    public DiscordantMessageHandler(Discordant discordant, DiscordApi discordApi) {
         this.discordant = discordant;
         this.discordApi = discordApi;
     }
