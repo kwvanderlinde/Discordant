@@ -6,7 +6,6 @@ import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.HashTableLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
-import com.kwvanderlinde.discordant.core.discord.api.NullDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.WriteThroughLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
@@ -26,6 +25,7 @@ import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.HashSet;
@@ -71,13 +71,7 @@ public class Discordant {
 
     private @Nullable Server server;
 
-    // region Configuration-dependent services.
-    private DiscordApi discordApi = new NullDiscordApi();
-    private DiscordantConfig config = new DiscordantConfig();
-    private LinkedProfileManager linkedProfileManager;
-    private DiscordantAppender logAppender;
-    private ScopeFactory scopeFactory;
-    // endregion
+    private @Nonnull ConfigDependantServices configDependantServices;
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
@@ -103,12 +97,17 @@ public class Discordant {
         }
 
         try {
-            loadConfig();
+            configDependantServices = loadConfig();
         }
         catch (ConfigurationValidationFailed e) {
             throw new ModLoadFailed(e);
         }
 
+        final var config = configDependantServices.config;
+        final var discordApi = configDependantServices.discordApi;
+        final var linkedProfileManager = configDependantServices.linkedProfileManager;
+        final var scopeFactory = configDependantServices.scopeFactory;
+        final var logAppender = configDependantServices.logAppender;
         minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
 
         minecraftIntegration.events().onServerStarted((server) -> {
@@ -152,9 +151,7 @@ public class Discordant {
             }
         });
         minecraftIntegration.events().onServerStopped((server) -> {
-            ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
-            discordApi.close();
-            discordApi = new NullDiscordApi();
+            unloadConfig();
         });
         minecraftIntegration.events().onTickStart((server) -> {
             clock.tick();
@@ -299,7 +296,19 @@ public class Discordant {
         };
     }
 
-    private void loadConfig() throws ConfigurationValidationFailed {
+    private void unloadConfig() {
+        // TODO For reloads, need to wait for discordApi to be stopped before continuing, without
+        //  hanging the server.
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(configDependantServices.logAppender);
+        configDependantServices.discordApi.close();
+        // TODO Save pending link verifications, and repopulate known users in linkedProfileManager,
+        //  at least on reload.
+
+    }
+
+    private ConfigDependantServices loadConfig() throws ConfigurationValidationFailed {
+        final DiscordantConfig config;
+        final DiscordApi discordApi;
         try {
             config = configManager.readDiscordLinkSettings();
 
@@ -326,14 +335,22 @@ public class Discordant {
             throw new ConfigurationValidationFailed("Unhandled exception", e);
         }
 
-        linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
-        scopeFactory = new ScopeFactory(clock, config, discordApi.getBotName());
+        final var linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
+        final var scopeFactory = new ScopeFactory(clock, config, discordApi.getBotName());
 
-        logAppender = new DiscordantAppender(Level.INFO, discordApi);
+        final var logAppender = new DiscordantAppender(Level.INFO, discordApi);
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
 
         // TODO Need to disable commands based on new config.
         //minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
+
+        return new ConfigDependantServices(
+                config,
+                discordApi,
+                linkedProfileManager,
+                logAppender,
+                scopeFactory
+        );
     }
 
     public @Nullable Server getServer() {
@@ -341,7 +358,7 @@ public class Discordant {
     }
 
     private String parseDiscordMentions(String msg) {
-        final var guild = discordApi.getGuild();
+        final var guild = configDependantServices.discordApi.getGuild();
         if (guild != null) {
             List<String> mentions = mentionPattern.matcher(msg).results().map(matchResult -> matchResult.group(0)).toList();
             for (String s : mentions) {

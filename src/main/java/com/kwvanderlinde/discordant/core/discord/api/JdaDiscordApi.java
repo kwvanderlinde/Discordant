@@ -103,7 +103,7 @@ public class JdaDiscordApi implements DiscordApi {
     @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
         if (!stopped && chatChannel != null) {
-            chatChannel.sendMessageEmbeds(e).submit(handleRateLimitations);
+            sendEmbed(chatChannel, e);
         }
     }
 
@@ -121,6 +121,10 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void close() {
+        if (stopped) {
+            return;
+        }
+
         stopped = true;
         // Give JDA a short time to finish up. But don't let it sit there forever, it's not worth it.
         jda.shutdown();
