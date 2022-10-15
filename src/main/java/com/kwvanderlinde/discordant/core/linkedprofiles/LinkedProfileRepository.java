@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.core.discord.linkedprofiles;
+package com.kwvanderlinde.discordant.core.linkedprofiles;
 
 import javax.annotation.Nullable;
 import java.util.UUID;
