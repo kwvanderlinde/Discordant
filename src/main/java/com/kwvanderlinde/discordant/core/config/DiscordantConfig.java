@@ -15,6 +15,7 @@ public class DiscordantConfig {
             "body", "https://crafatar.com/renders/body/{player.uuid}/?scale=10&overlay&ts={server.time}"
     );
 
+    public LinkingConfig linking = new LinkingConfig();
     public DiscordConfig discord = new DiscordConfig();
     public MinecraftConfig minecraft = new MinecraftConfig();
 }

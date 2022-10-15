@@ -358,7 +358,7 @@ public class Discordant {
             // TODO Need a bailout for robustness.
             authCode = r.nextInt(100_000, 1_000_000);
         }
-        pendingPlayers.put(authCode, new VerificationData(name, uuid, currentTime + 600_000));
+        pendingPlayers.put(authCode, new VerificationData(name, uuid, currentTime + config.linking.pendingTimeout));
         pendingPlayersUUID.put(uuid, authCode);
 
         return authCode;
