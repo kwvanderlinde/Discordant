@@ -1,13 +1,16 @@
 package com.kwvanderlinde.discordant.core;
 
+import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.MessageHandler;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
+import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import javax.annotation.Nonnull;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,10 +23,14 @@ public class DiscordantMessageHandler implements MessageHandler {
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
     private final Discordant discordant;
+    private final DiscordantConfig config;
+    private final Server server;
     private final DiscordApi discordApi;
 
-    public DiscordantMessageHandler(Discordant discordant, DiscordApi discordApi) {
+    public DiscordantMessageHandler(@Nonnull Discordant discordant, @Nonnull DiscordantConfig config, @Nonnull Server server, @Nonnull DiscordApi discordApi) {
         this.discordant = discordant;
+        this.config = config;
+        this.server = server;
         this.discordApi = discordApi;
     }
 
@@ -42,12 +49,11 @@ public class DiscordantMessageHandler implements MessageHandler {
     @Override
     public void onConsoleInput(MessageReceivedEvent e, String message) {
         logger.info("Discord user " + e.getAuthor().getName() + " running command " + message);
-        discordant.getServer().runCommand(message);
+        server.runCommand(message);
     }
 
     @Override
     public void onBotPmInput(MessageReceivedEvent e, String message) {
-        final var config = discordant.getConfig();
         if (!config.linking.enabled) {
             return;
         }
@@ -57,9 +63,6 @@ public class DiscordantMessageHandler implements MessageHandler {
 
 
     private void handleCommandInput(MessageReceivedEvent event, String command) {
-        final var config = discordant.getConfig();
-        final var server = discordant.getServer();
-
         if (command.startsWith("list")) {
             final var players = server.getAllPlayers().toList();
             if (players.isEmpty()) {
@@ -89,7 +92,7 @@ public class DiscordantMessageHandler implements MessageHandler {
                     s = s.substring(1);
                 }
                 String name = discordant.getLinkedPlayerNameForDiscordId(s);
-                if (discordant.getConfig().linking.enabled && discordant.getConfig().enableMentions && name != null) {
+                if (config.linking.enabled && config.enableMentions && name != null) {
                     playerNamesToNotify.add(name.toLowerCase());
                     message = message.replaceAll("<(@.|@)" + s + ">", "@" + name);
                 }
@@ -116,7 +119,7 @@ public class DiscordantMessageHandler implements MessageHandler {
             final var generalMessage = notifyMessage.copy()
                                                     .append(messageFinal);
 
-            discordant.getServer().getAllPlayers().forEach(player -> {
+            server.getAllPlayers().forEach(player -> {
                 if (!playerNamesToNotify.contains(player.name().toLowerCase())) {
                     player.sendSystemMessage(generalMessage);
                 }

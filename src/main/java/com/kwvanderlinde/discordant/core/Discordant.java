@@ -53,6 +53,9 @@ import java.util.regex.Pattern;
  *
  * Can be consumed by minecraft integrators in order to support new minecraft versions.
  */
+// TODO Factor out the miscellaneous behaviour. E.g., we have config as a separate object, we should
+//   also have link verification be its own thing, and scope building and embed building should be
+//   something else as well.
 public class Discordant {
     private static final Logger logger = LogManager.getLogger(Discordant.class);
 
@@ -114,12 +117,7 @@ public class Discordant {
                 throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
             }
 
-            discordApi = new JdaDiscordApi(this, serverCache);
-
-            discordApi.addHandler(new DiscordantMessageHandler(
-                    this,
-                    discordApi
-            ));
+            discordApi = new JdaDiscordApi(config, serverCache);
         }
         catch (ConfigurationValidationFailed e) {
             throw e;
@@ -141,6 +139,13 @@ public class Discordant {
 
         minecraftIntegration.events().onServerStarted((server) -> {
             Discordant.this.server = server;
+
+            discordApi.addHandler(new DiscordantMessageHandler(
+                    this,
+                    config,
+                    server,
+                    discordApi
+            ));
 
             // TODO Attach server icon as a thumbnail or image if possible.
             final var message = config.discord.messages.serverStart

@@ -39,8 +39,8 @@ public class JdaDiscordApi implements DiscordApi {
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull Discordant discordant, @Nonnull ServerCache cache) throws InterruptedException {
-        this.config = discordant.getConfig();
+    public JdaDiscordApi(@Nonnull DiscordantConfig config, @Nonnull ServerCache cache) throws InterruptedException {
+        this.config = config;
 
         final var listener = new ListenerAdapter() {
             @Override
