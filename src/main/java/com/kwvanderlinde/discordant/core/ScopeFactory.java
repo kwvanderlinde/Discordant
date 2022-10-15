@@ -10,6 +10,7 @@ import com.kwvanderlinde.discordant.core.messages.scopes.ServerScope;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
 import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
+import com.kwvanderlinde.discordant.core.utils.Clock;
 import net.dv8tion.jda.api.entities.User;
 
 import javax.annotation.Nonnull;
@@ -17,23 +18,25 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class ScopeFactory {
-    private final Discordant discordant;
+    private final Clock clock;
     private final DiscordantConfig config;
+    private final String botName;
 
-    public ScopeFactory(Discordant discordant, DiscordantConfig config) {
-        this.discordant = discordant;
+    public ScopeFactory(Clock clock, DiscordantConfig config, String botName) {
+        this.clock = clock;
         this.config = config;
+        this.botName = botName;
     }
 
     public ServerScope serverScope(@Nonnull Server server) {
         return new ServerScope(
                 config.minecraft.serverName,
-                discordant.getBotName(),
+                botName,
                 server.motd(),
                 server.getPlayerCount(),
                 server.getMaxPlayers(),
                 server.getAllPlayers().map(Player::name).toList(),
-                discordant.getCurrentTime()
+                clock.getCurrentTime()
         );
     }
 

@@ -18,6 +18,7 @@ import com.kwvanderlinde.discordant.core.messages.scopes.NotificationStateScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.PendingVerificationScope;
 import com.kwvanderlinde.discordant.core.modinterfaces.Integration;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
+import com.kwvanderlinde.discordant.core.utils.TickedClock;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.User;
 import org.apache.logging.log4j.Level;
@@ -27,7 +28,6 @@ import org.apache.logging.log4j.Logger;
 import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -61,6 +61,7 @@ public class Discordant {
 
     private @Nullable Server server;
 
+    private final TickedClock clock;
     private ServerCache serverCache;
     private DiscordApi discordApi = new NullDiscordApi();
     private DiscordantConfig config;
@@ -69,12 +70,13 @@ public class Discordant {
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
     private long currentTime = System.currentTimeMillis();
-    private String botName;
     private final ScopeFactory scopeFactory;
     private final EmbedFactory embedFactory;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
 
     public Discordant(Integration minecraftIntegration) throws ModLoadFailed, ConfigurationValidationFailed {
+        this.clock = new TickedClock();
+
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
 
         this.serverCache = new FileBackedServerCache(configRoot.resolve("cache"));
@@ -113,9 +115,8 @@ public class Discordant {
                 new HashTableLinkedProfileRepository(),
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
-        linkedProfileManager = new LinkedProfileManager(config.linking, linkedProfileRepository);
-        botName = discordApi.getBotName();
-        scopeFactory = new ScopeFactory(this, config);
+        linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
+        scopeFactory = new ScopeFactory(clock, config, discordApi.getBotName());
         embedFactory = new EmbedFactory();
 
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
@@ -313,10 +314,6 @@ public class Discordant {
 
     public @Nullable Server getServer() {
         return server;
-    }
-
-    public String getBotName() {
-        return botName;
     }
 
     private String parseDiscordMentions(String msg) {

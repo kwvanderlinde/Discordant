@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.core.linkedprofiles;
 
+import com.kwvanderlinde.discordant.core.utils.Clock;
 import com.kwvanderlinde.discordant.core.config.LinkingConfig;
 import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import net.dv8tion.jda.api.entities.User;
@@ -11,6 +12,7 @@ import java.util.Random;
 import java.util.UUID;
 
 public class LinkedProfileManager {
+    private final Clock clock;
     private final LinkingConfig config;
     private final LinkedProfileRepository linkedProfileRepository;
     private final HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
@@ -29,14 +31,15 @@ public class LinkedProfileManager {
     public record AlreadyLinked(LinkedProfile existingProfile) implements VerificationResult {}
     public record SuccessfulLink(LinkedProfile newProfile) implements VerificationResult {}
 
-    public LinkedProfileManager(LinkingConfig config, LinkedProfileRepository linkedProfileRepository) {
+    public LinkedProfileManager(Clock clock, LinkingConfig config, LinkedProfileRepository linkedProfileRepository) {
+        this.clock = clock;
         this.config = config;
         this.linkedProfileRepository = linkedProfileRepository;
     }
 
     public void clearExpiredVerifications() {
         // Remove any expired pending verifications.
-        final var currentTime = System.currentTimeMillis();
+        final var currentTime = clock.getCurrentTime();
         final var iterator = pendingLinkVerification.entrySet().iterator();
         while (iterator.hasNext()) {
             final var e = iterator.next();
@@ -86,7 +89,7 @@ public class LinkedProfileManager {
         }
 
         final var authCode = r.nextInt(100_000, 1_000_000);
-        final var expiryTime = System.currentTimeMillis() + config.pendingTimeout;
+        final var expiryTime = clock.getCurrentTime() + config.pendingTimeout;
         final var data = new VerificationData(name, uuid, authCode, expiryTime);
         pendingLinkVerification.put(uuid, data);
 
