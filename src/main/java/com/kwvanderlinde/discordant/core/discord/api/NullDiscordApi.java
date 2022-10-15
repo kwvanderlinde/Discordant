@@ -9,6 +9,10 @@ import javax.annotation.Nonnull;
 
 public class NullDiscordApi implements DiscordApi {
     @Override
+    public void addHandler(MessageHandler messageHandler) {
+    }
+
+    @Override
     public void close() {}
 
     @Override
@@ -19,11 +23,6 @@ public class NullDiscordApi implements DiscordApi {
     @Override
     public @Nullable Guild getGuild() {
         return null;
-    }
-
-    @Override
-    public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
-
     }
 
     @Override

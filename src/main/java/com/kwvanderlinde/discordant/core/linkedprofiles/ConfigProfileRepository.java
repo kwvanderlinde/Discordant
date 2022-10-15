@@ -1,4 +1,4 @@
-package com.kwvanderlinde.discordant.core.discord.linkedprofiles;
+package com.kwvanderlinde.discordant.core.linkedprofiles;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;

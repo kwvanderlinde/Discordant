@@ -22,7 +22,13 @@ public class DiscordantCommands {
         }
     }
 
-    public static void register(CommandHandlers commandHandlers, CommandDispatcher<CommandSourceStack> dispatcher, boolean linkingEnabled) {
+    private boolean linkingEnabled = false;
+
+    public void setLinkingCommandsEnabled(boolean linkingEnabled) {
+        this.linkingEnabled = linkingEnabled;
+    }
+
+    public void register(CommandHandlers commandHandlers, CommandDispatcher<CommandSourceStack> dispatcher) {
         final var commands = Commands.literal("discord");
 
         // Toggle notification sounds.
@@ -32,12 +38,17 @@ public class DiscordantCommands {
                                             .executes(context -> switchNotifySoundState(context.getSource(), BoolArgumentType.getBool(context, "soundstate"), commandHandlers.setMentionNotificationsEnabled))));
 
         // Linking commands only if linking is a possibility.
-        if (linkingEnabled) {
-            commands.then(Commands.literal("link")
-                                  .executes(context -> link(context.getSource(), commandHandlers.link)))
-                    .then(Commands.literal("unlink")
-                                  .executes(context -> unlink(context.getSource(), commandHandlers.unlink)));
-        }
+        commands.then(Commands.literal("link")
+                              .requires(s -> linkingEnabled)
+                              .executes(context -> link(context.getSource(), commandHandlers.link)))
+                .then(Commands.literal("unlink")
+                              .requires(s -> linkingEnabled)
+                              .executes(context -> unlink(context.getSource(), commandHandlers.unlink)));
+
+        // TODO Gate reload behind OP
+        commands.then(Commands.literal("reload")
+                              .requires(s -> s.hasPermission(4))
+                              .executes(context -> { commandHandlers.reload.handle(); return 0; }));
 
         dispatcher.register(commands);
     }

@@ -52,7 +52,7 @@ public class ConfigManager {
         }
     }
 
-    public DiscordantConfig readDiscordLinkSettings() throws FileNotFoundException {
+    public DiscordantConfig readConfigSettings() throws FileNotFoundException {
         return gson.fromJson(new FileReader(mainConfigPath.toFile()), DiscordantConfig.class);
     }
 

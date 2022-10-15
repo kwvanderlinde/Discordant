@@ -7,19 +7,15 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-public interface DiscordApi extends AutoCloseable {
-    @Override
+public interface DiscordApi {
+    void addHandler(MessageHandler messageHandler);
+
     void close();
 
     @Nonnull String getBotName();
 
     // TODO Expose linked profiles instead of a guild directly.
     @Nullable Guild getGuild();
-
-    // TODO I don't like this method being public. I want to just send messages and all applicable channels get it.
-    //  This is really only used to respond to command in discord via listener. There is probably a better way than
-    //  cluttering our core API.
-    void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg);
 
     // TODO Allow any number of targets for both console and chat messages (and embeds), each with
     //  their own configuration, messages, support for webhooks, and topics.
