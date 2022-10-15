@@ -181,12 +181,12 @@ public class Discordant {
             final var message = config.discord.messages.playerChat
                     .instantiate(new ChatScope(
                             // TODO Look up the linked profile and pass the corresponding discord user.
-                            scopeFactory.playerScope(player.profile(), getServer(), null),
+                            scopeFactory.playerScope(player.profile(), server, null),
                             chatMessage
                     ));
             final var e = embedFactory.embedBuilder(message);
 
-            e.setAuthor(player.name(), null, scopeFactory.getPlayerIconUrl(player.profile(), getServer()));
+            e.setAuthor(player.name(), null, scopeFactory.getPlayerIconUrl(player.profile(), server));
             {
                 // If linking is enabled, actually use the discord details as the author.
                 final var guild = discordApi.getGuild();
@@ -224,7 +224,7 @@ public class Discordant {
 
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerJoin
-                    .instantiate(scopeFactory.playerScope(player.profile(), getServer(), null));
+                    .instantiate(scopeFactory.playerScope(player.profile(), server, null));
 
             discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
         });
@@ -235,7 +235,7 @@ public class Discordant {
 
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerLeave
-                    .instantiate(scopeFactory.playerScope(player.profile(), getServer(), null));
+                    .instantiate(scopeFactory.playerScope(player.profile(), server, null));
             discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
 
             knownPlayerIds.remove(player.uuid());
@@ -245,7 +245,7 @@ public class Discordant {
         minecraftIntegration.events().onPlayerDeath((player, deathMessage) -> {
             final var message = config.discord.messages.playerDeath
                     .instantiate(new DeathScope(
-                            scopeFactory.playerScope(player.profile(), getServer(), null),
+                            scopeFactory.playerScope(player.profile(), server, null),
                             deathMessage
                     ));
             discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
@@ -254,7 +254,7 @@ public class Discordant {
             // TODO Look up the linked profile and pass the corresponding discord user.
             final var message = config.discord.messages.playerAdvancement
                     .instantiate(new AdvancementScope(
-                            scopeFactory.playerScope(player.profile(), getServer(), null),
+                            scopeFactory.playerScope(player.profile(), server, null),
                             advancement.name(),
                             advancement.title(),
                             advancement.description()
@@ -266,7 +266,7 @@ public class Discordant {
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
             final var authCode = linkedProfileManager.generateLinkCode(player.uuid(), player.name());
-            final var scope = new PendingVerificationScope(scopeFactory.serverScope(getServer()), authCode);
+            final var scope = new PendingVerificationScope(scopeFactory.serverScope(server), authCode);
             respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
         };
         commandHandlers.unlink = (player, respondWith) -> {
@@ -351,10 +351,6 @@ public class Discordant {
                 logAppender,
                 scopeFactory
         );
-    }
-
-    public @Nullable Server getServer() {
-        return server;
     }
 
     private String parseDiscordMentions(String msg) {
