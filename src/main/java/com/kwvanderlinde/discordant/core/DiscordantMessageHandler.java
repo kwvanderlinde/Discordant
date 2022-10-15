@@ -23,12 +23,14 @@ public class DiscordantMessageHandler implements MessageHandler {
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
     private final Discordant discordant;
+    private final ScopeFactory scopeFactory;
     private final DiscordantConfig config;
     private final Server server;
     private final DiscordApi discordApi;
 
-    public DiscordantMessageHandler(@Nonnull Discordant discordant, @Nonnull DiscordantConfig config, @Nonnull Server server, @Nonnull DiscordApi discordApi) {
+    public DiscordantMessageHandler(@Nonnull Discordant discordant, @Nonnull ScopeFactory scopeFactory, @Nonnull DiscordantConfig config, @Nonnull Server server, @Nonnull DiscordApi discordApi) {
         this.discordant = discordant;
+        this.scopeFactory = scopeFactory;
         this.config = config;
         this.server = server;
         this.discordApi = discordApi;
@@ -67,12 +69,12 @@ public class DiscordantMessageHandler implements MessageHandler {
             final var players = server.getAllPlayers().toList();
             if (players.isEmpty()) {
                 final var message = config.discord.messages.noPlayers
-                        .instantiate(discordant.serverScope(server));
+                        .instantiate(scopeFactory.serverScope(server));
                 discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
             }
             else {
                 final var message = config.discord.messages.onlinePlayers
-                        .instantiate(discordant.serverScope(server));
+                        .instantiate(scopeFactory.serverScope(server));
 
                 discordApi.sendEmbed(Discordant.buildMessageEmbed(message).build());
             }

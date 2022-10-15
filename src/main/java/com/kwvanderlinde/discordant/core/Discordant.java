@@ -88,6 +88,7 @@ public class Discordant {
     private final HashMap<UUID, VerificationData> pendingLinkVerification = new HashMap<>();
     private long currentTime = System.currentTimeMillis();
     private String botName;
+    private final ScopeFactory scopeFactory;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
     private final Random r = new Random();
 
@@ -131,6 +132,7 @@ public class Discordant {
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
         botName = discordApi.getBotName();
+        scopeFactory = new ScopeFactory(this);
 
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
@@ -142,6 +144,7 @@ public class Discordant {
 
             discordApi.addHandler(new DiscordantMessageHandler(
                     this,
+                    scopeFactory,
                     config,
                     server,
                     discordApi
@@ -149,12 +152,12 @@ public class Discordant {
 
             // TODO Attach server icon as a thumbnail or image if possible.
             final var message = config.discord.messages.serverStart
-                    .instantiate(serverScope(server));
+                    .instantiate(scopeFactory.serverScope(server));
             discordApi.sendEmbed(buildMessageEmbed(message).build());
 
             // Update the channel topic.
             final var topic = config.discord.topics.channelTopic
-                    .instantiate(serverScope(server));
+                    .instantiate(scopeFactory.serverScope(server));
             if (topic.description != null) {
                 discordApi.setTopic(topic.description);
             }
@@ -163,14 +166,14 @@ public class Discordant {
             {
                 // Update the channel topic.
                 final var topic = config.discord.topics.shutdownTopic
-                        .instantiate(serverScope(server));
+                        .instantiate(scopeFactory.serverScope(server));
                 if (topic.description != null) {
                     discordApi.setTopic(topic.description);
                 }
             }
             {
                 final var message = config.discord.messages.serverStop
-                        .instantiate(serverScope(server));
+                        .instantiate(scopeFactory.serverScope(server));
                 discordApi.sendEmbed(buildMessageEmbed(message).build());
             }
         });
@@ -189,7 +192,7 @@ public class Discordant {
             if (tickCount % 6000 == 0) {
                 // Update the channel topic.
                 final var topic = config.discord.topics.channelTopic
-                        .instantiate(serverScope(server));
+                        .instantiate(scopeFactory.serverScope(server));
                 if (topic.description != null) {
                     discordApi.setTopic(topic.description);
                 }
@@ -255,7 +258,7 @@ public class Discordant {
                 // Profile does not exist. So send the user a code to verify with.
                 final var authCode = this.generateLinkCode(profile.uuid(), profile.name());
                 final var message = config.minecraft.messages.verificationDisconnect
-                        .instantiate(new PendingVerificationScope(serverScope(server), authCode));
+                        .instantiate(new PendingVerificationScope(scopeFactory.serverScope(server), authCode));
                 reject.withReason(message);
             }
 
@@ -310,7 +313,7 @@ public class Discordant {
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
             final var authCode = generateLinkCode(player.uuid(), player.name());
-            final var scope = new PendingVerificationScope(serverScope(getServer()), authCode);
+            final var scope = new PendingVerificationScope(scopeFactory.serverScope(getServer()), authCode);
             respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
         };
         commandHandlers.unlink = (player, respondWith) -> {
@@ -508,21 +511,13 @@ public class Discordant {
         return msg;
     }
 
-    public ServerScope serverScope(Server server) {
-        return new ServerScope(
-                config.minecraft.serverName,
-                botName,
-                server.motd(),
-                server.getPlayerCount(),
-                server.getMaxPlayers(),
-                server.getAllPlayers().map(Player::name).toList(),
-                currentTime
-        );
+    public long getCurrentTime() {
+        return currentTime;
     }
 
     private ProfileScope profileScope(Profile profile) {
         return new ProfileScope(
-                serverScope(getServer()),
+                scopeFactory.serverScope(getServer()),
                 profile.uuid(),
                 profile.name()
         );
