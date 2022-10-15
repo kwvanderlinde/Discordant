@@ -9,7 +9,7 @@ import javax.annotation.Nonnull;
 
 public class NullDiscordApi implements DiscordApi {
     @Override
-    public void addListener(MessageHandler messageHandler) {
+    public void addHandler(MessageHandler messageHandler) {
     }
 
     @Override

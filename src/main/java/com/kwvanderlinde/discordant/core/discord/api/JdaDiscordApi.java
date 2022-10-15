@@ -3,13 +3,15 @@ package com.kwvanderlinde.discordant.core.discord.api;
 import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.ServerCache;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
-import com.kwvanderlinde.discordant.core.discord.DiscordListener;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
+import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
+import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.utils.MemberCachePolicy;
 import okhttp3.OkHttpClient;
@@ -18,14 +20,16 @@ import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
 public class JdaDiscordApi implements DiscordApi {
     private static final Logger logger = LogManager.getLogger(JdaDiscordApi.class);
 
+    private final List<MessageHandler> messageHandlers = new ArrayList<>();
     private final @Nonnull JDA jda;
-    private final @Nonnull DiscordListener listener;
     private final @Nonnull DiscordantConfig config;
     private final @Nonnull String botName;
     private final @Nullable TextChannel chatChannel;
@@ -38,7 +42,26 @@ public class JdaDiscordApi implements DiscordApi {
     public JdaDiscordApi(@Nonnull Discordant discordant, @Nonnull ServerCache cache) throws InterruptedException {
         this.config = discordant.getConfig();
 
-        listener = new DiscordListener(config.discord);
+        final var listener = new ListenerAdapter() {
+            @Override
+            public void onMessageReceived(@Nonnull MessageReceivedEvent event) {
+                if (event.getAuthor() == event.getJDA().getSelfUser() || event.getAuthor().isBot()) {
+                    // Don't respond to bots, including ourselves.
+                    return;
+                }
+
+                final var channelId = event.getChannel().getId();
+                if (channelId.equals(config.discord.chatChannelId)) {
+                    messageHandlers.forEach(handler -> handler.onChatInput(event, event.getMessage().getContentRaw()));
+                }
+                else if (channelId.equals(config.discord.consoleChannelId)) {
+                    messageHandlers.forEach(handler -> handler.onConsoleInput(event, event.getMessage().getContentRaw()));
+                }
+                else if (event.getChannelType() == ChannelType.PRIVATE) {
+                    messageHandlers.forEach(handler -> handler.onBotPmInput(event, event.getMessage().getContentRaw()));
+                }
+            }
+        };
         jda = JDABuilder.createDefault(config.discord.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
@@ -93,8 +116,8 @@ public class JdaDiscordApi implements DiscordApi {
     }
 
     @Override
-    public void addListener(MessageHandler messageHandler) {
-        this.listener.addListener(messageHandler);
+    public void addHandler(MessageHandler messageHandler) {
+        this.messageHandlers.add(messageHandler);
     }
 
     @Override
