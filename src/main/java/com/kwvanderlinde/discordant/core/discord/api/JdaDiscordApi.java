@@ -1,6 +1,5 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
-import com.kwvanderlinde.discordant.core.Discordant;
 import com.kwvanderlinde.discordant.core.ServerCache;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import net.dv8tion.jda.api.JDA;
