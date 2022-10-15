@@ -132,7 +132,7 @@ public class Discordant {
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
 
-        minecraftIntegration.enableCommands(config.enableAccountLinking && !config.forceLinking);
+        minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
 
         minecraftIntegration.events().onServerStarted((server) -> {
             Discordant.this.server = server;
@@ -214,7 +214,7 @@ public class Discordant {
             {
                 // If linking is enabled, actually use the discord details as the author.
                 final var guild = discordApi.getGuild();
-                if (config.enableAccountLinking && guild != null) {
+                if (config.linking.enabled && guild != null) {
                     LinkedProfile linkedProfile = linkedProfileRepository.getByPlayerId(player.uuid());
                     if (linkedProfile != null) {
                         Member m = guild.getMemberById(linkedProfile.discordId());
@@ -229,7 +229,7 @@ public class Discordant {
         });
 
         minecraftIntegration.events().onPlayerJoinAttempt((server, profile, reject) -> {
-            if (!config.enableAccountLinking) {
+            if (!config.linking.enabled) {
                 // This handler is only for loading and checking linked accounts.
                 return;
             }
@@ -241,7 +241,7 @@ public class Discordant {
                 //  not be correct for them to exist, but bugs or instability may cause it.
                 linkedPlayersByDiscordId.put(linkedProfile.discordId(), profile.name());
             }
-            else if (config.forceLinking) {
+            else if (config.linking.enabled) {
                 // Profile does not exist. So send the user a code to verify with.
                 final var authCode = this.generateLinkCode(profile.uuid(), profile.name());
                 final var message = config.minecraft.messages.verificationDisconnect
@@ -397,7 +397,7 @@ public class Discordant {
             final var newLinkedProfile = new LinkedProfile(data.name(), uuid, author.getId());
             linkedProfileRepository.put(newLinkedProfile);
             pendingLinkVerification.remove(uuid);
-            if (!config.forceLinking) {
+            if (!config.linking.enabled) {
                 // TODO Player lookup should be unnecessary since player.name() should be the same
                 //  as data.name(). But also why do we need to store the name?
                 final var player = getServer().getPlayer(uuid);

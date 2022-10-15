@@ -49,7 +49,7 @@ public class DiscordListener extends ListenerAdapter {
             else if (channelId.equals(config.discord.consoleChannelId)) {
                 handleConsoleInput(event, server);
             }
-            else if (config.enableAccountLinking && event.getChannelType() == ChannelType.PRIVATE) {
+            else if (config.linking.enabled && event.getChannelType() == ChannelType.PRIVATE) {
                 try {
                     tryVerify(event);
                 }

@@ -6,8 +6,6 @@ public class DiscordantConfig {
     public boolean enableLogsForwarding = true;
 
     public String playerIconUrl = "https://crafatar.com/avatars/{player.uuid}/?size=16&overlay&ts={server.time}";
-    public boolean enableAccountLinking = true;
-    public boolean forceLinking = false;
     public boolean enableMentions = true;
 
     public Map<String, String> avatarUrls = Map.of(
