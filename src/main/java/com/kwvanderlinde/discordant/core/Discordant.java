@@ -82,8 +82,7 @@ public class Discordant {
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
     private final HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
-    private final HashMap<Integer, VerificationData> pendingPlayers = new HashMap<>();
-    private final HashMap<UUID, Integer> pendingPlayersUUID = new HashMap<>();
+    private final HashMap<UUID, VerificationData> pendingLinkVerification = new HashMap<>();
     private long currentTime = System.currentTimeMillis();
     private String botName;
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
@@ -187,12 +186,11 @@ public class Discordant {
             }
             if (tickCount % 1200 == 0) {
                 // Remove any expired pending verifications.
-                final var iterator = pendingPlayers.entrySet().iterator();
+                final var iterator = pendingLinkVerification.entrySet().iterator();
                 while (iterator.hasNext()) {
                     final var e = iterator.next();
                     VerificationData data = e.getValue();
                     if (currentTime > data.validUntil()) {
-                        pendingPlayersUUID.remove(data.uuid());
                         iterator.remove();
                     }
                 }
@@ -245,9 +243,9 @@ public class Discordant {
             }
             else if (config.forceLinking) {
                 // Profile does not exist. So send the user a code to verify with.
-                final int authCode = this.generateLinkCode(profile.uuid(), profile.name());
+                final var authCode = this.generateLinkCode(profile.uuid(), profile.name());
                 final var message = config.minecraft.messages.verificationDisconnect
-                        .instantiate(new PendingVerificationScope(serverScope(server), String.valueOf(authCode)));
+                        .instantiate(new PendingVerificationScope(serverScope(server), authCode));
                 reject.withReason(message);
             }
 
@@ -301,8 +299,8 @@ public class Discordant {
         final var commandHandlers = minecraftIntegration.commandsHandlers();
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
-            final int authCode = generateLinkCode(player.uuid(), player.name());
-            final var scope = new PendingVerificationScope(serverScope(getServer()), String.valueOf(authCode));
+            final var authCode = generateLinkCode(player.uuid(), player.name());
+            final var scope = new PendingVerificationScope(serverScope(getServer()), authCode);
             respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
         };
         commandHandlers.unlink = (player, respondWith) -> {
@@ -348,47 +346,61 @@ public class Discordant {
         return linkedPlayersByDiscordId.get(discordId);
     }
 
-    public int generateLinkCode(UUID uuid, String name) {
-        if (pendingPlayersUUID.containsKey(uuid)) {
-            return pendingPlayersUUID.get(uuid);
+    public String generateLinkCode(UUID uuid, String name) {
+        if (pendingLinkVerification.containsKey(uuid)) {
+            return pendingLinkVerification.get(uuid).token();
         }
 
-        int authCode = r.nextInt(100_000, 1_000_000);
-        while (pendingPlayers.containsKey(authCode)) {
-            // TODO Need a bailout for robustness.
-            authCode = r.nextInt(100_000, 1_000_000);
-        }
-        pendingPlayers.put(authCode, new VerificationData(name, uuid, currentTime + config.linking.pendingTimeout));
-        pendingPlayersUUID.put(uuid, authCode);
+        final var authCode = r.nextInt(100_000, 1_000_000);
+        final var data = new VerificationData(name, uuid, authCode, currentTime + config.linking.pendingTimeout);
+        pendingLinkVerification.put(uuid, data);
 
-        return authCode;
+        return data.token();
     }
 
-    public boolean verifyLinkedProfile(final MessageChannel channelToRespondIn, final User author, final String verificationCode) {
+    public boolean verifyLinkedProfile(final MessageChannel channelToRespondIn, final User author, final String verificationToken) {
+        final var parts = verificationToken.split("\\|", 2);
+        if (parts.length != 2) {
+            logger.warn("Verification attempt with invalid token: {}", verificationToken);
+            return false;
+        }
+
+        final UUID uuid;
+        try {
+            uuid = UUID.fromString(parts[0]);
+        }
+        catch (IllegalArgumentException e) {
+            logger.warn("Verification attempt with invalid UUID: {}", parts[0]);
+            return false;
+        }
+
+        final var verificationCode = parts[1];
         if (verificationCode.length() != 6 || !verificationCode.matches("[0-9]+")) {
+            logger.warn("Verification attempt with invalid authentication code: {}", verificationCode);
             return false;
         }
 
         final var code = Integer.parseInt(verificationCode);
-        final var data = pendingPlayers.get(code);
+        final var data = pendingLinkVerification.get(uuid);
         if (data == null) {
+            logger.warn("Verification attempt for player with no pending verification: {}", uuid);
+            return false;
+        }
+        if (data.code() != code) {
+            logger.warn("Verification attempt for player with incorrect code: {}, {}", uuid, code);
             return false;
         }
 
-        final var id = data.uuid();
-
-        // TODO Avoid filesystem access here, and rely on the repository as needed.
-        final var existingProfile = linkedProfileRepository.getByPlayerId(id);
+        final var existingProfile = linkedProfileRepository.getByPlayerId(uuid);
         if (existingProfile == null) {
             // Profile entry does not exist yet. Create it.
-            final var newLinkedProfile = new LinkedProfile(data.name(), id, author.getId());
+            final var newLinkedProfile = new LinkedProfile(data.name(), uuid, author.getId());
             linkedProfileRepository.put(newLinkedProfile);
-            pendingPlayersUUID.remove(id);
-            pendingPlayers.remove(code);
+            pendingLinkVerification.remove(uuid);
             if (!config.forceLinking) {
                 // TODO Player lookup should be unnecessary since player.name() should be the same
                 //  as data.name(). But also why do we need to store the name?
-                final var player = getServer().getPlayer(id);
+                final var player = getServer().getPlayer(uuid);
                 if (player != null) {
                     linkedPlayersByDiscordId.put(newLinkedProfile.discordId(), player.name());
                 }
@@ -434,8 +446,7 @@ public class Discordant {
                 final var message = config.discord.messages.alreadyLinked
                         .instantiate(playerScope(profile, m == null ? null : m.getUser()));
                 discordApi.sendEmbed(channelToRespondIn, buildMessageEmbed(message).build());
-                pendingPlayersUUID.remove(id);
-                pendingPlayers.remove(code);
+                pendingLinkVerification.remove(uuid);
             }
             return false;
         }
