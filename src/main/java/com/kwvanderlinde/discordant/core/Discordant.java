@@ -241,7 +241,7 @@ public class Discordant {
                 //  not be correct for them to exist, but bugs or instability may cause it.
                 linkedPlayersByDiscordId.put(linkedProfile.discordId(), profile.name());
             }
-            else if (config.linking.enabled) {
+            else if (config.linking.required) {
                 // Profile does not exist. So send the user a code to verify with.
                 final var authCode = this.generateLinkCode(profile.uuid(), profile.name());
                 final var message = config.minecraft.messages.verificationDisconnect
@@ -397,7 +397,7 @@ public class Discordant {
             final var newLinkedProfile = new LinkedProfile(data.name(), uuid, author.getId());
             linkedProfileRepository.put(newLinkedProfile);
             pendingLinkVerification.remove(uuid);
-            if (!config.linking.enabled) {
+            if (!config.linking.required) {
                 // TODO Player lookup should be unnecessary since player.name() should be the same
                 //  as data.name(). But also why do we need to store the name?
                 final var player = getServer().getPlayer(uuid);
