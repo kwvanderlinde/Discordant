@@ -5,8 +5,7 @@ import java.nio.file.Path;
 public interface Integration {
     Path getConfigRoot();
 
-    // TODO These should probably actually be passing callback for when the events happen.
-    void enableCommands(boolean linkingEnabled);
+    void setLinkingCommandsEnabled(boolean linkingEnabled);
 
     Events events();
 

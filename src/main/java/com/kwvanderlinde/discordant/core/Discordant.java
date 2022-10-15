@@ -63,6 +63,7 @@ public class Discordant {
         }
     }
 
+    private final Integration minecraftIntegration;
     private final TickedClock clock;
     private final ConfigManager configManager;
     private final LinkedProfileRepository linkedProfileRepository;
@@ -77,6 +78,7 @@ public class Discordant {
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
 
     public Discordant(Integration minecraftIntegration) throws ModLoadFailed {
+        this.minecraftIntegration = minecraftIntegration;
         this.clock = new TickedClock();
 
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
@@ -107,8 +109,6 @@ public class Discordant {
         final var discordApi = configDependantServices.discordApi();
         final var linkedProfileManager = configDependantServices.linkedProfileManager();
         final var scopeFactory = configDependantServices.scopeFactory();
-        final var logAppender = configDependantServices.logAppender();
-        minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
 
         minecraftIntegration.events().onServerStarted((server) -> {
             Discordant.this.server = server;
@@ -342,7 +342,7 @@ public class Discordant {
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
 
         // TODO Need to disable commands based on new config.
-        //minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
+        minecraftIntegration.setLinkingCommandsEnabled(config.linking.enabled && !config.linking.required);
 
         return new ConfigDependantServices(
                 config,
