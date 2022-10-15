@@ -103,11 +103,11 @@ public class Discordant {
             throw new ModLoadFailed(e);
         }
 
-        final var config = configDependantServices.config;
-        final var discordApi = configDependantServices.discordApi;
-        final var linkedProfileManager = configDependantServices.linkedProfileManager;
-        final var scopeFactory = configDependantServices.scopeFactory;
-        final var logAppender = configDependantServices.logAppender;
+        final var config = configDependantServices.config();
+        final var discordApi = configDependantServices.discordApi();
+        final var linkedProfileManager = configDependantServices.linkedProfileManager();
+        final var scopeFactory = configDependantServices.scopeFactory();
+        final var logAppender = configDependantServices.logAppender();
         minecraftIntegration.enableCommands(config.linking.enabled && !config.linking.required);
 
         minecraftIntegration.events().onServerStarted((server) -> {
@@ -299,8 +299,8 @@ public class Discordant {
     private void unloadConfig() {
         // TODO For reloads, need to wait for discordApi to be stopped before continuing, without
         //  hanging the server.
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(configDependantServices.logAppender);
-        configDependantServices.discordApi.close();
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(configDependantServices.logAppender());
+        configDependantServices.discordApi().close();
         // TODO Save pending link verifications, and repopulate known users in linkedProfileManager,
         //  at least on reload.
 
@@ -358,7 +358,7 @@ public class Discordant {
     }
 
     private String parseDiscordMentions(String msg) {
-        final var guild = configDependantServices.discordApi.getGuild();
+        final var guild = configDependantServices.discordApi().getGuild();
         if (guild != null) {
             List<String> mentions = mentionPattern.matcher(msg).results().map(matchResult -> matchResult.group(0)).toList();
             for (String s : mentions) {
