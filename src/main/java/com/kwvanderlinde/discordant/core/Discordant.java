@@ -40,9 +40,6 @@ import java.util.regex.Pattern;
  *
  * Can be consumed by minecraft integrators in order to support new minecraft versions.
  */
-// TODO Factor out the miscellaneous behaviour. E.g., we have config as a separate object, we should
-//   also have link verification be its own thing, and scope building and embed building should be
-//   something else as well.
 public class Discordant {
     private static final Logger logger = LogManager.getLogger(Discordant.class);
 
@@ -69,7 +66,6 @@ public class Discordant {
     private final ConfigManager configManager;
     private final LinkedProfileRepository linkedProfileRepository;
     private final EmbedFactory embedFactory;
-    private final ServerCache serverCache;
 
     private @Nullable Server server;
 
@@ -95,8 +91,6 @@ public class Discordant {
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
         embedFactory = new EmbedFactory();
-
-        this.serverCache = new FileBackedServerCache(configRoot.resolve("cache"));
 
         configManager = new ConfigManager(configRoot);
         try {
