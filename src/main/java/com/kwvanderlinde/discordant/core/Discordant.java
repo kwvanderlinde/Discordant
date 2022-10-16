@@ -1,6 +1,7 @@
 package com.kwvanderlinde.discordant.core;
 
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
+import com.kwvanderlinde.discordant.core.discord.api.ReplaceableDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.ConfigProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
@@ -285,6 +286,7 @@ public class Discordant {
             config = newConfig;
             configDependantServices.linkedProfileManager().reload(newConfig);
             configDependantServices.scopeFactory().reload(newConfig);
+            configDependantServices.discordApi().reload(newConfig);
         };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
@@ -348,7 +350,7 @@ public class Discordant {
     }
 
     private ConfigDependantServices loadConfig() throws ConfigurationValidationFailed {
-        final DiscordApi discordApi;
+        final ReplaceableDiscordApi discordApi;
         try {
             config = configManager.readDiscordLinkSettings();
 
@@ -366,7 +368,7 @@ public class Discordant {
                 throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
             }
 
-            discordApi = new JdaDiscordApi(config, serverCache);
+            discordApi = new ReplaceableDiscordApi(JdaDiscordApi::new, config);
         }
         catch (ConfigurationValidationFailed e) {
             throw e;

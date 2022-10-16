@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
+import com.kwvanderlinde.discordant.core.ReloadableComponent;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;

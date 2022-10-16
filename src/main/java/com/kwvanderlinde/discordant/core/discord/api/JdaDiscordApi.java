@@ -1,6 +1,5 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
-import com.kwvanderlinde.discordant.core.ServerCache;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -38,7 +37,7 @@ public class JdaDiscordApi implements DiscordApi {
     // TODO Don't bother. Instead, replace this impl with a dummy impl.
     private boolean stopped = false;
 
-    public JdaDiscordApi(@Nonnull DiscordantConfig config, @Nonnull ServerCache cache) throws InterruptedException {
+    public JdaDiscordApi(@Nonnull DiscordantConfig config) {
         this.config = config;
 
         final var listener = new ListenerAdapter() {
@@ -50,10 +49,10 @@ public class JdaDiscordApi implements DiscordApi {
                 }
 
                 final var channelId = event.getChannel().getId();
-                if (channelId.equals(config.discord.chatChannelId)) {
+                if (channelId.equals(JdaDiscordApi.this.config.discord.chatChannelId)) {
                     messageHandlers.forEach(handler -> handler.onChatInput(event, event.getMessage().getContentRaw()));
                 }
-                else if (channelId.equals(config.discord.consoleChannelId)) {
+                else if (channelId.equals(JdaDiscordApi.this.config.discord.consoleChannelId)) {
                     messageHandlers.forEach(handler -> handler.onConsoleInput(event, event.getMessage().getContentRaw()));
                 }
                 else if (event.getChannelType() == ChannelType.PRIVATE) {
@@ -61,17 +60,22 @@ public class JdaDiscordApi implements DiscordApi {
                 }
             }
         };
-        jda = JDABuilder.createDefault(config.discord.token)
+        jda = JDABuilder.createDefault(this.config.discord.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
                         .addEventListeners(new Object[]{ listener })
                         .build();
-        jda.awaitReady();
+        try {
+            jda.awaitReady();
+        }
+        catch (InterruptedException e) {
+            logger.warn(e);
+        }
 
         try {
-            if (!config.discord.serverId.isEmpty()) {
-                guild = jda.getGuildById(config.discord.serverId);
+            if (!this.config.discord.serverId.isEmpty()) {
+                guild = jda.getGuildById(this.config.discord.serverId);
                 if (guild != null) {
                     guild.loadMembers();
                 }
@@ -80,9 +84,9 @@ public class JdaDiscordApi implements DiscordApi {
                 guild = null;
             }
             botName = jda.getSelfUser().getName();
-            chatChannel = jda.getTextChannelById(config.discord.chatChannelId);
-            consoleChannel = config.enableLogsForwarding
-                    ? jda.getTextChannelById(config.discord.consoleChannelId)
+            chatChannel = jda.getTextChannelById(this.config.discord.chatChannelId);
+            consoleChannel = this.config.enableLogsForwarding
+                    ? jda.getTextChannelById(this.config.discord.consoleChannelId)
                     : null;
         }
         catch (Exception e) {

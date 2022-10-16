@@ -3,6 +3,7 @@ package com.kwvanderlinde.discordant.core.config;
 import java.util.Map;
 
 public class DiscordantConfig {
+    // TODO Move into DiscordConfig so JdaDiscordApi can only depend on DiscordConfig.
     public boolean enableLogsForwarding = true;
 
     public String playerIconUrl = "https://crafatar.com/avatars/{player.uuid}/?size=16&overlay&ts={server.time}";
