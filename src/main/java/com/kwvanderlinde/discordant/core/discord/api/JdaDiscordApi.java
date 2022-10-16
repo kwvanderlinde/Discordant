@@ -85,7 +85,7 @@ public class JdaDiscordApi implements DiscordApi {
             }
             botName = jda.getSelfUser().getName();
             chatChannel = jda.getTextChannelById(this.config.discord.chatChannelId);
-            consoleChannel = this.config.enableLogsForwarding
+            consoleChannel = this.config.discord.enableLogsForwarding
                     ? jda.getTextChannelById(this.config.discord.consoleChannelId)
                     : null;
         }
@@ -167,7 +167,7 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void postConsoleMessage(@Nonnull String msg) {
-        if (!stopped && config.enableLogsForwarding && consoleChannel != null) {
+        if (!stopped && config.discord.enableLogsForwarding && consoleChannel != null) {
             if (msg.length() > 1999) {
                 msg = msg.substring(0, 1999);
             }

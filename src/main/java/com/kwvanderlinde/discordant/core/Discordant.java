@@ -340,7 +340,7 @@ public class Discordant {
             if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
                 throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
             }
-            if (config.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
+            if (discordConfig.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
                 throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
             }
 
