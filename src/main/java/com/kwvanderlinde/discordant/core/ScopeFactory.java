@@ -17,15 +17,20 @@ import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ScopeFactory {
+public class ScopeFactory implements ReloadableComponent{
+    private DiscordantConfig config;
     private final Clock clock;
-    private final DiscordantConfig config;
     private final String botName;
 
-    public ScopeFactory(Clock clock, DiscordantConfig config, String botName) {
-        this.clock = clock;
+    public ScopeFactory(DiscordantConfig config, Clock clock, String botName) {
         this.config = config;
+        this.clock = clock;
         this.botName = botName;
+    }
+
+    @Override
+    public void reload(DiscordantConfig newConfig) {
+        this.config = newConfig;
     }
 
     public ServerScope serverScope(@Nonnull Server server) {

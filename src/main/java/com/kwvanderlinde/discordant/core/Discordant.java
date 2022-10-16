@@ -27,6 +27,7 @@ import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
@@ -72,7 +73,9 @@ public class Discordant {
 
     private @Nullable Server server;
 
+    private @Nonnull DiscordantConfig config;
     private @Nonnull ConfigDependantServices configDependantServices;
+    private final @Nonnull DiscordantAppender logAppender;
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
@@ -105,7 +108,10 @@ public class Discordant {
             throw new ModLoadFailed(e);
         }
 
-        final var config = configDependantServices.config();
+        logAppender = new DiscordantAppender(Level.INFO, configDependantServices.discordApi());
+        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
+
+
         final var discordApi = configDependantServices.discordApi();
         final var linkedProfileManager = configDependantServices.linkedProfileManager();
         final var scopeFactory = configDependantServices.scopeFactory();
@@ -151,7 +157,8 @@ public class Discordant {
             }
         });
         minecraftIntegration.events().onServerStopped((server) -> {
-            unloadConfig();
+            ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
+            configDependantServices.discordApi().close();
         });
         minecraftIntegration.events().onTickStart((server) -> {
             clock.tick();
@@ -264,6 +271,19 @@ public class Discordant {
 
         final var commandHandlers = minecraftIntegration.commandsHandlers();
         commandHandlers.reload = () -> {
+            // TODO Re-read a new configuration. Validate it first. Only if it passes validation,
+            //  use it to update services.
+            final DiscordantConfig newConfig;
+            try {
+                newConfig = loadAndValidateConfig();
+            }
+            catch (ConfigurationValidationFailed e) {
+                logger.warn("Reloaded configuration is invalid: {}", e.getMessage());
+                return;
+            }
+
+            config = newConfig;
+            configDependantServices.scopeFactory().reload(newConfig);
         };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
@@ -298,18 +318,35 @@ public class Discordant {
         };
     }
 
-    private void unloadConfig() {
-        // TODO For reloads, need to wait for discordApi to be stopped before continuing, without
-        //  hanging the server.
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(configDependantServices.logAppender());
-        configDependantServices.discordApi().close();
-        // TODO Save pending link verifications, and repopulate known users in linkedProfileManager,
-        //  at least on reload.
+    private DiscordantConfig loadAndValidateConfig() throws ConfigurationValidationFailed {
+        try {
+            final var config = configManager.readDiscordLinkSettings();
 
+            final var discordConfig = config.discord;
+            if ("".equals(discordConfig.token) || null == discordConfig.token) {
+                throw new ConfigurationValidationFailed("A bot token must be provided in config.json!");
+            }
+            if ("".equals(discordConfig.serverId) || null == discordConfig.serverId) {
+                throw new ConfigurationValidationFailed("A server ID must be provided in config.json!");
+            }
+            if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
+                throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
+            }
+            if (config.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
+                throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
+            }
+
+            return config;
+        }
+        catch (ConfigurationValidationFailed e) {
+            throw e;
+        }
+        catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private ConfigDependantServices loadConfig() throws ConfigurationValidationFailed {
-        final DiscordantConfig config;
         final DiscordApi discordApi;
         try {
             config = configManager.readDiscordLinkSettings();
@@ -338,19 +375,14 @@ public class Discordant {
         }
 
         final var linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
-        final var scopeFactory = new ScopeFactory(clock, config, discordApi.getBotName());
-
-        final var logAppender = new DiscordantAppender(Level.INFO, discordApi);
-        ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
+        final var scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
 
         // TODO Need to disable commands based on new config.
         minecraftIntegration.setLinkingCommandsEnabled(config.linking.enabled && !config.linking.required);
 
         return new ConfigDependantServices(
-                config,
                 discordApi,
                 linkedProfileManager,
-                logAppender,
                 scopeFactory
         );
     }
