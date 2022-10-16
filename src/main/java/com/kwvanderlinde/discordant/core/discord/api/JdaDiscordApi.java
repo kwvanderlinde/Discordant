@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
+import com.kwvanderlinde.discordant.core.config.DiscordConfig;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -28,7 +29,7 @@ public class JdaDiscordApi implements DiscordApi {
 
     private final List<MessageHandler> messageHandlers = new ArrayList<>();
     private final @Nonnull JDA jda;
-    private final @Nonnull DiscordantConfig config;
+    private final @Nonnull DiscordConfig config;
     private final @Nonnull String botName;
     private final @Nullable TextChannel chatChannel;
     private final @Nullable TextChannel consoleChannel;
@@ -38,7 +39,7 @@ public class JdaDiscordApi implements DiscordApi {
     private boolean stopped = false;
 
     public JdaDiscordApi(@Nonnull DiscordantConfig config) {
-        this.config = config;
+        this.config = config.discord;
 
         final var listener = new ListenerAdapter() {
             @Override
@@ -49,10 +50,10 @@ public class JdaDiscordApi implements DiscordApi {
                 }
 
                 final var channelId = event.getChannel().getId();
-                if (channelId.equals(JdaDiscordApi.this.config.discord.chatChannelId)) {
+                if (channelId.equals(JdaDiscordApi.this.config.chatChannelId)) {
                     messageHandlers.forEach(handler -> handler.onChatInput(event, event.getMessage().getContentRaw()));
                 }
-                else if (channelId.equals(JdaDiscordApi.this.config.discord.consoleChannelId)) {
+                else if (channelId.equals(JdaDiscordApi.this.config.consoleChannelId)) {
                     messageHandlers.forEach(handler -> handler.onConsoleInput(event, event.getMessage().getContentRaw()));
                 }
                 else if (event.getChannelType() == ChannelType.PRIVATE) {
@@ -60,7 +61,7 @@ public class JdaDiscordApi implements DiscordApi {
                 }
             }
         };
-        jda = JDABuilder.createDefault(this.config.discord.token)
+        jda = JDABuilder.createDefault(this.config.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
@@ -74,8 +75,8 @@ public class JdaDiscordApi implements DiscordApi {
         }
 
         try {
-            if (!this.config.discord.serverId.isEmpty()) {
-                guild = jda.getGuildById(this.config.discord.serverId);
+            if (!this.config.serverId.isEmpty()) {
+                guild = jda.getGuildById(this.config.serverId);
                 if (guild != null) {
                     guild.loadMembers();
                 }
@@ -84,9 +85,9 @@ public class JdaDiscordApi implements DiscordApi {
                 guild = null;
             }
             botName = jda.getSelfUser().getName();
-            chatChannel = jda.getTextChannelById(this.config.discord.chatChannelId);
-            consoleChannel = this.config.discord.enableLogsForwarding
-                    ? jda.getTextChannelById(this.config.discord.consoleChannelId)
+            chatChannel = jda.getTextChannelById(this.config.chatChannelId);
+            consoleChannel = this.config.enableLogsForwarding
+                    ? jda.getTextChannelById(this.config.consoleChannelId)
                     : null;
         }
         catch (Exception e) {
@@ -167,7 +168,7 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void postConsoleMessage(@Nonnull String msg) {
-        if (!stopped && config.discord.enableLogsForwarding && consoleChannel != null) {
+        if (!stopped && config.enableLogsForwarding && consoleChannel != null) {
             if (msg.length() > 1999) {
                 msg = msg.substring(0, 1999);
             }
