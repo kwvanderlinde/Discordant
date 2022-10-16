@@ -26,11 +26,6 @@ public class NullDiscordApi implements DiscordApi {
     }
 
     @Override
-    public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
-
-    }
-
-    @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
 
     }
