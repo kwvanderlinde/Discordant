@@ -113,10 +113,10 @@ public class Discordant {
         linkedProfileManager = new LinkedProfileManager(config.linking, clock, linkedProfileRepository);
         scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
         discordantMessageHandler = new DiscordantMessageHandler(
+                config,
                 linkedProfileManager,
                 scopeFactory,
                 embedFactory,
-                config,
                 server,
                 discordApi
         );

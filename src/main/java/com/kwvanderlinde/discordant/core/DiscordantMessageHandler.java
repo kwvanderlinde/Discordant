@@ -25,23 +25,23 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
     private final Pattern pattern = Pattern.compile("(?<=!\\+).+?(?=!\\+|$|\\s)");
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
+    private DiscordantConfig config;
     private final LinkedProfileManager linkedProfileManager;
     private final ScopeFactory scopeFactory;
     private final EmbedFactory embedFactory;
-    private DiscordantConfig config;
     private final Server server;
     private final DiscordApi discordApi;
 
-    public DiscordantMessageHandler(@Nonnull LinkedProfileManager linkedProfileManager,
+    public DiscordantMessageHandler(@Nonnull DiscordantConfig config,
+                                    @Nonnull LinkedProfileManager linkedProfileManager,
                                     @Nonnull ScopeFactory scopeFactory,
                                     @Nonnull EmbedFactory embedFactory,
-                                    @Nonnull DiscordantConfig config,
                                     @Nonnull Server server,
                                     @Nonnull DiscordApi discordApi) {
+        this.config = config;
         this.linkedProfileManager = linkedProfileManager;
         this.scopeFactory = scopeFactory;
         this.embedFactory = embedFactory;
-        this.config = config;
         this.server = server;
         this.discordApi = discordApi;
     }
