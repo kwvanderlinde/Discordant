@@ -7,6 +7,7 @@ public class CommandHandlers {
     public UnlinkHandler unlink = (player, respondWith) -> {};
     public QueryMentionNotificationEnabledsHandler queryMentionNotificationsEnabled = (player, respondWith) -> {};
     public SetMentionNotificationsHandler setMentionNotificationsEnabled = (player, newState, respondWith) -> {};
+    public ReloadHandler reload = () -> {};
 
     @FunctionalInterface
     public interface LinkHandler {
@@ -26,6 +27,11 @@ public class CommandHandlers {
     @FunctionalInterface
     public interface SetMentionNotificationsHandler {
         void handle(Player player, boolean newState, Responder respondWith);
+    }
+
+    @FunctionalInterface
+    public interface ReloadHandler {
+        void handle();
     }
 
     public interface Responder {

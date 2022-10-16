@@ -263,6 +263,8 @@ public class Discordant {
         });
 
         final var commandHandlers = minecraftIntegration.commandsHandlers();
+        commandHandlers.reload = () -> {
+        };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
             final var authCode = linkedProfileManager.generateLinkCode(player.uuid(), player.name());
