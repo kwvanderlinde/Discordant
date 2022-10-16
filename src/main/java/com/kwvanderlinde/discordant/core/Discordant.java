@@ -283,6 +283,7 @@ public class Discordant {
             }
 
             config = newConfig;
+            configDependantServices.linkedProfileManager().reload(newConfig);
             configDependantServices.scopeFactory().reload(newConfig);
         };
         commandHandlers.link = (player, respondWith) -> {
@@ -374,7 +375,7 @@ public class Discordant {
             throw new ConfigurationValidationFailed("Unhandled exception", e);
         }
 
-        final var linkedProfileManager = new LinkedProfileManager(clock, config.linking, linkedProfileRepository);
+        final var linkedProfileManager = new LinkedProfileManager(config.linking, clock, linkedProfileRepository);
         final var scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
 
         // TODO Need to disable commands based on new config.

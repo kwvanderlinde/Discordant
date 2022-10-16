@@ -1,5 +1,7 @@
 package com.kwvanderlinde.discordant.core.linkedprofiles;
 
+import com.kwvanderlinde.discordant.core.ReloadableComponent;
+import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.utils.Clock;
 import com.kwvanderlinde.discordant.core.config.LinkingConfig;
 import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
@@ -11,9 +13,9 @@ import java.util.HashMap;
 import java.util.Random;
 import java.util.UUID;
 
-public class LinkedProfileManager {
+public class LinkedProfileManager implements ReloadableComponent {
+    private LinkingConfig config;
     private final Clock clock;
-    private final LinkingConfig config;
     private final LinkedProfileRepository linkedProfileRepository;
     private final HashMap<String, String> linkedPlayersByDiscordId = new HashMap<>();
     private final HashMap<UUID, VerificationData> pendingLinkVerification = new HashMap<>();
@@ -31,10 +33,16 @@ public class LinkedProfileManager {
     public record AlreadyLinked(LinkedProfile existingProfile) implements VerificationResult {}
     public record SuccessfulLink(LinkedProfile newProfile) implements VerificationResult {}
 
-    public LinkedProfileManager(Clock clock, LinkingConfig config, LinkedProfileRepository linkedProfileRepository) {
-        this.clock = clock;
+    public LinkedProfileManager(LinkingConfig config, Clock clock, LinkedProfileRepository linkedProfileRepository) {
         this.config = config;
+        this.clock = clock;
         this.linkedProfileRepository = linkedProfileRepository;
+    }
+
+    @Override
+    public void reload(DiscordantConfig newConfig) {
+        // Not much to be done as we just dynamically read values from the configuration.
+        config = newConfig.linking;
     }
 
     public void clearExpiredVerifications() {
