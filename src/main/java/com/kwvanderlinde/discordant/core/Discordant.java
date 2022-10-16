@@ -378,7 +378,6 @@ public class Discordant {
         final var linkedProfileManager = new LinkedProfileManager(config.linking, clock, linkedProfileRepository);
         final var scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
 
-        // TODO Need to disable commands based on new config.
         minecraftIntegration.setLinkingCommandsEnabled(config.linking.enabled && !config.linking.required);
 
         return new ConfigDependantServices(
