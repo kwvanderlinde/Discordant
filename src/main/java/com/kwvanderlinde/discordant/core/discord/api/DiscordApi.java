@@ -1,6 +1,5 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
-import com.kwvanderlinde.discordant.core.ReloadableComponent;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -8,10 +7,9 @@ import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-public interface DiscordApi extends AutoCloseable {
+public interface DiscordApi {
     void addHandler(MessageHandler messageHandler);
 
-    @Override
     void close();
 
     @Nonnull String getBotName();

@@ -75,7 +75,11 @@ public class Discordant {
     private @Nullable Server server;
 
     private @Nonnull DiscordantConfig config;
-    private @Nonnull ConfigDependantServices configDependantServices;
+    // region Reloadable components
+    private @Nonnull ReplaceableDiscordApi discordApi;
+    private @Nonnull LinkedProfileManager linkedProfileManager;
+    private @Nonnull ScopeFactory scopeFactory;
+    // endregion
     private final @Nonnull DiscordantAppender logAppender;
 
     private final Set<UUID> knownPlayerIds = new HashSet<>();
@@ -103,19 +107,22 @@ public class Discordant {
         }
 
         try {
-            configDependantServices = loadConfig();
+            config = loadAndValidateConfig();
         }
         catch (ConfigurationValidationFailed e) {
+            // TODO Just load a default config?
             throw new ModLoadFailed(e);
         }
 
-        logAppender = new DiscordantAppender(Level.INFO, configDependantServices.discordApi());
+        // Create new config-dependent components.
+        discordApi = new ReplaceableDiscordApi(JdaDiscordApi::new, config);
+        linkedProfileManager = new LinkedProfileManager(config.linking, clock, linkedProfileRepository);
+        scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
+
+        logAppender = new DiscordantAppender(Level.INFO, discordApi);
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
 
-
-        final var discordApi = configDependantServices.discordApi();
-        final var linkedProfileManager = configDependantServices.linkedProfileManager();
-        final var scopeFactory = configDependantServices.scopeFactory();
+        minecraftIntegration.setLinkingCommandsEnabled(config.linking.enabled && !config.linking.required);
 
         minecraftIntegration.events().onServerStarted((server) -> {
             Discordant.this.server = server;
@@ -159,7 +166,7 @@ public class Discordant {
         });
         minecraftIntegration.events().onServerStopped((server) -> {
             ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).removeAppender(logAppender);
-            configDependantServices.discordApi().close();
+            discordApi.close();
         });
         minecraftIntegration.events().onTickStart((server) -> {
             clock.tick();
@@ -272,8 +279,6 @@ public class Discordant {
 
         final var commandHandlers = minecraftIntegration.commandsHandlers();
         commandHandlers.reload = () -> {
-            // TODO Re-read a new configuration. Validate it first. Only if it passes validation,
-            //  use it to update services.
             final DiscordantConfig newConfig;
             try {
                 newConfig = loadAndValidateConfig();
@@ -284,9 +289,9 @@ public class Discordant {
             }
 
             config = newConfig;
-            configDependantServices.linkedProfileManager().reload(newConfig);
-            configDependantServices.scopeFactory().reload(newConfig);
-            configDependantServices.discordApi().reload(newConfig);
+            linkedProfileManager.reload(newConfig);
+            scopeFactory.reload(newConfig);
+            discordApi.reload(newConfig);
         };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
@@ -349,48 +354,8 @@ public class Discordant {
         }
     }
 
-    private ConfigDependantServices loadConfig() throws ConfigurationValidationFailed {
-        final ReplaceableDiscordApi discordApi;
-        try {
-            config = configManager.readDiscordLinkSettings();
-
-            final var discordConfig = config.discord;
-            if ("".equals(discordConfig.token) || null == discordConfig.token) {
-                throw new ConfigurationValidationFailed("A bot token must be provided in config.json!");
-            }
-            if ("".equals(discordConfig.serverId) || null == discordConfig.serverId) {
-                throw new ConfigurationValidationFailed("A server ID must be provided in config.json!");
-            }
-            if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
-                throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
-            }
-            if (config.enableLogsForwarding && ("".equals(discordConfig.consoleChannelId) || null == discordConfig.consoleChannelId)) {
-                throw new ConfigurationValidationFailed("A console channel ID must be provided in config.json when log forwarding is enabled!");
-            }
-
-            discordApi = new ReplaceableDiscordApi(JdaDiscordApi::new, config);
-        }
-        catch (ConfigurationValidationFailed e) {
-            throw e;
-        }
-        catch (Exception e) {
-            throw new ConfigurationValidationFailed("Unhandled exception", e);
-        }
-
-        final var linkedProfileManager = new LinkedProfileManager(config.linking, clock, linkedProfileRepository);
-        final var scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
-
-        minecraftIntegration.setLinkingCommandsEnabled(config.linking.enabled && !config.linking.required);
-
-        return new ConfigDependantServices(
-                discordApi,
-                linkedProfileManager,
-                scopeFactory
-        );
-    }
-
     private String parseDiscordMentions(String msg) {
-        final var guild = configDependantServices.discordApi().getGuild();
+        final var guild = discordApi.getGuild();
         if (guild != null) {
             List<String> mentions = mentionPattern.matcher(msg).results().map(matchResult -> matchResult.group(0)).toList();
             for (String s : mentions) {
