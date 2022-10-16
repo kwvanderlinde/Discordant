@@ -95,6 +95,7 @@ public class Discordant {
         configManager = new ConfigManager(configRoot);
         try {
             configManager.ensureConfigStructure();
+            // TODO Initialize mod to a valid state where a reload can still be issued.
         }
         catch (IOException e) {
             throw new ModLoadFailed(e);
@@ -104,7 +105,7 @@ public class Discordant {
             config = loadAndValidateConfig();
         }
         catch (ConfigurationValidationFailed e) {
-            // TODO Just load a default config?
+            // TODO Initialize mod to a valid state where a reload can still be issued.
             throw new ModLoadFailed(e);
         }
 
