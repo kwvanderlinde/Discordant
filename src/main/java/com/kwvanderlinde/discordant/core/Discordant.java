@@ -3,7 +3,6 @@ package com.kwvanderlinde.discordant.core;
 import com.kwvanderlinde.discordant.core.config.ConfigManager;
 import com.kwvanderlinde.discordant.core.discord.api.ReplaceableDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.ConfigProfileRepository;
-import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.HashTableLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
@@ -79,6 +78,7 @@ public class Discordant {
     private @Nonnull ReplaceableDiscordApi discordApi;
     private @Nonnull LinkedProfileManager linkedProfileManager;
     private @Nonnull ScopeFactory scopeFactory;
+    private @Nonnull DiscordantMessageHandler discordantMessageHandler;
     // endregion
     private final @Nonnull DiscordantAppender logAppender;
 
@@ -118,6 +118,14 @@ public class Discordant {
         discordApi = new ReplaceableDiscordApi(JdaDiscordApi::new, config);
         linkedProfileManager = new LinkedProfileManager(config.linking, clock, linkedProfileRepository);
         scopeFactory = new ScopeFactory(config, clock, discordApi.getBotName());
+        discordantMessageHandler = new DiscordantMessageHandler(
+                linkedProfileManager,
+                scopeFactory,
+                embedFactory,
+                config,
+                server,
+                discordApi
+        );
 
         logAppender = new DiscordantAppender(Level.INFO, discordApi);
         ((org.apache.logging.log4j.core.Logger) LogManager.getRootLogger()).addAppender(logAppender);
@@ -127,15 +135,7 @@ public class Discordant {
         minecraftIntegration.events().onServerStarted((server) -> {
             Discordant.this.server = server;
 
-            discordApi.addHandler(new DiscordantMessageHandler(
-                    this,
-                    linkedProfileManager,
-                    scopeFactory,
-                    embedFactory,
-                    config,
-                    server,
-                    discordApi
-            ));
+            discordApi.addHandler(discordantMessageHandler);
 
             // TODO Attach server icon as a thumbnail or image if possible.
             final var message = config.discord.messages.serverStart
@@ -292,6 +292,7 @@ public class Discordant {
             linkedProfileManager.reload(newConfig);
             scopeFactory.reload(newConfig);
             discordApi.reload(newConfig);
+            discordantMessageHandler.reload(newConfig);
         };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
@@ -328,7 +329,7 @@ public class Discordant {
 
     private DiscordantConfig loadAndValidateConfig() throws ConfigurationValidationFailed {
         try {
-            final var config = configManager.readDiscordLinkSettings();
+            final var config = configManager.readConfigSettings();
 
             final var discordConfig = config.discord;
             if ("".equals(discordConfig.token) || null == discordConfig.token) {

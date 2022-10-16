@@ -20,33 +20,35 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-public class DiscordantMessageHandler implements MessageHandler {
+public class DiscordantMessageHandler implements MessageHandler, ReloadableComponent {
     private static final Logger logger = LogManager.getLogger(DiscordantMessageHandler.class);
     private final Pattern pattern = Pattern.compile("(?<=!\\+).+?(?=!\\+|$|\\s)");
     private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
 
-    private final Discordant discordant;
     private final LinkedProfileManager linkedProfileManager;
     private final ScopeFactory scopeFactory;
     private final EmbedFactory embedFactory;
-    private final DiscordantConfig config;
+    private DiscordantConfig config;
     private final Server server;
     private final DiscordApi discordApi;
 
-    public DiscordantMessageHandler(@Nonnull Discordant discordant,
-                                    @Nonnull LinkedProfileManager linkedProfileManager,
+    public DiscordantMessageHandler(@Nonnull LinkedProfileManager linkedProfileManager,
                                     @Nonnull ScopeFactory scopeFactory,
                                     @Nonnull EmbedFactory embedFactory,
                                     @Nonnull DiscordantConfig config,
                                     @Nonnull Server server,
                                     @Nonnull DiscordApi discordApi) {
-        this.discordant = discordant;
         this.linkedProfileManager = linkedProfileManager;
         this.scopeFactory = scopeFactory;
         this.embedFactory = embedFactory;
         this.config = config;
         this.server = server;
         this.discordApi = discordApi;
+    }
+
+    @Override
+    public void reload(DiscordantConfig newConfig) {
+        this.config = newConfig;
     }
 
     @Override
