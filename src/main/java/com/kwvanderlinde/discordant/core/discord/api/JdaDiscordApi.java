@@ -99,13 +99,6 @@ public class JdaDiscordApi implements DiscordApi {
     }
 
     @Override
-    public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
-        if (!stopped) {
-            ch.sendMessage(msg).submit(handleRateLimitations);
-        }
-    }
-
-    @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
         if (!stopped && chatChannel != null) {
             sendEmbed(chatChannel, e);
@@ -172,7 +165,7 @@ public class JdaDiscordApi implements DiscordApi {
             if (msg.length() > 1999) {
                 msg = msg.substring(0, 1999);
             }
-            sendMessage(consoleChannel, msg);
+            consoleChannel.sendMessage(msg).submit(handleRateLimitations);
         }
     }
 

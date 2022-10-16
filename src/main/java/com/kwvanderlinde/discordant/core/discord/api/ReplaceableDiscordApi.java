@@ -58,11 +58,6 @@ public class ReplaceableDiscordApi implements DiscordApi, ReloadableComponent {
     }
 
     @Override
-    public void sendMessage(@Nonnull MessageChannel ch, @Nonnull String msg) {
-        this.api.sendMessage(ch, msg);
-    }
-
-    @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
         this.api.sendEmbed(e);
     }
