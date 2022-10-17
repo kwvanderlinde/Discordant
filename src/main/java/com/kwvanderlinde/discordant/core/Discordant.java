@@ -284,6 +284,8 @@ public class Discordant {
             scopeFactory.reload(newConfig);
             discordApi.reload(newConfig);
             discordantMessageHandler.reload(newConfig);
+
+            minecraftIntegration.setLinkingCommandsEnabled(config.linking.enabled && !config.linking.required);
         };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
