@@ -22,9 +22,6 @@ public interface DiscordApi {
 
     void sendEmbed(@Nonnull MessageEmbed e);
 
-    // TODO I don't like this method being public. I want to just send messages and all applicable channels get it.
-    //  This is really only used to respond to command in discord via listener. There is probably a better way than
-    //  cluttering our core API.
     void sendEmbed(@Nonnull MessageChannel ch, @Nonnull MessageEmbed e);
 
     void postConsoleMessage(@Nonnull String msg);
