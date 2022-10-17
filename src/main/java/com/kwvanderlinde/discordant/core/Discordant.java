@@ -6,7 +6,6 @@ import com.kwvanderlinde.discordant.core.linkedprofiles.ConfigProfileRepository;
 import com.kwvanderlinde.discordant.core.discord.api.JdaDiscordApi;
 import com.kwvanderlinde.discordant.core.linkedprofiles.HashTableLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
-import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.linkedprofiles.WriteThroughLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
@@ -61,20 +60,18 @@ public class Discordant {
         }
     }
 
-    private final Integration minecraftIntegration;
     private final TickedClock clock;
     private final ConfigManager configManager;
-    private final LinkedProfileRepository linkedProfileRepository;
     private final EmbedFactory embedFactory;
 
     private @Nullable Server server;
 
     private @Nonnull DiscordantConfig config;
     // region Reloadable components
-    private @Nonnull ReplaceableDiscordApi discordApi;
-    private @Nonnull LinkedProfileManager linkedProfileManager;
-    private @Nonnull ScopeFactory scopeFactory;
-    private @Nonnull DiscordantMessageHandler discordantMessageHandler;
+    private final @Nonnull ReplaceableDiscordApi discordApi;
+    private final @Nonnull LinkedProfileManager linkedProfileManager;
+    private final @Nonnull ScopeFactory scopeFactory;
+    private final @Nonnull DiscordantMessageHandler discordantMessageHandler;
     // endregion
     private final @Nonnull DiscordantAppender logAppender;
 
@@ -82,11 +79,10 @@ public class Discordant {
     private final Pattern mentionPattern = Pattern.compile("(?<=@).+?(?=@|$|\\s)");
 
     public Discordant(Integration minecraftIntegration) throws ModLoadFailed {
-        this.minecraftIntegration = minecraftIntegration;
         this.clock = new TickedClock();
 
         final var configRoot = minecraftIntegration.getConfigRoot().resolve("discordant");
-        linkedProfileRepository = new WriteThroughLinkedProfileRepository(
+        final var linkedProfileRepository = new WriteThroughLinkedProfileRepository(
                 new HashTableLinkedProfileRepository(),
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
