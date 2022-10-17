@@ -35,17 +35,17 @@ dependencies {
 		exclude module: 'opus-java'
 	})
 
-	include('org.jetbrains.kotlin:kotlin-stdlib:1.4.10')
-	include 'com.squareup.okhttp3:okhttp:4.9.3'
-	include 'com.squareup.okio:okio:2.8.0'
-	include 'org.jetbrains:annotations:23.0.0'
-	include 'org.apache.commons:commons-collections4:4.4'
-	include "com.neovisionaries:nv-websocket-client:2.14"
-	include "com.google.code.findbugs:jsr305:3.0.2"
-	include "net.sf.trove4j:trove4j:3.0.3"
 	include 'com.fasterxml.jackson.core:jackson-annotations:2.13.3'
 	include 'com.fasterxml.jackson.core:jackson-core:2.13.3'
 	include 'com.fasterxml.jackson.core:jackson-databind:2.13.3'
+	include "com.google.code.findbugs:jsr305:3.0.2"
+	include "com.neovisionaries:nv-websocket-client:2.14"
+	include 'com.squareup.okhttp3:okhttp:4.9.3'
+	include 'com.squareup.okio:okio:2.8.0'
+	include "net.sf.trove4j:trove4j:3.0.3"
+	include 'org.apache.commons:commons-collections4:4.4'
+	include 'org.jetbrains.kotlin:kotlin-stdlib:1.4.10'
+	include 'org.jetbrains:annotations:23.0.0'
 }
 
 processResources {
