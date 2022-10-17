@@ -35,8 +35,6 @@ public class JdaDiscordApi implements DiscordApi {
     private final @Nullable TextChannel consoleChannel;
     private final @Nullable Guild guild;
     private boolean handleRateLimitations = true;
-    // TODO Don't bother. Instead, replace this impl with a dummy impl.
-    private boolean stopped = false;
 
     public JdaDiscordApi(@Nonnull DiscordantConfig config) {
         this.config = config.discord;
@@ -100,16 +98,14 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
-        if (!stopped && chatChannel != null) {
+        if (chatChannel != null) {
             sendEmbed(chatChannel, e);
         }
     }
 
     @Override
     public void sendEmbed(@Nonnull MessageChannel ch, @Nonnull MessageEmbed e) {
-        if (!stopped) {
-            ch.sendMessageEmbeds(e).submit(handleRateLimitations);
-        }
+        ch.sendMessageEmbeds(e).submit(handleRateLimitations);
     }
 
     @Override
@@ -119,11 +115,6 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void close() {
-        if (stopped) {
-            return;
-        }
-
-        stopped = true;
         // Give JDA a short time to finish up. But don't let it sit there forever, it's not worth it.
         jda.shutdown();
 
@@ -161,7 +152,7 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void postConsoleMessage(@Nonnull String msg) {
-        if (!stopped && config.enableLogsForwarding && consoleChannel != null) {
+        if (config.enableLogsForwarding && consoleChannel != null) {
             if (msg.length() > 1999) {
                 msg = msg.substring(0, 1999);
             }
@@ -171,7 +162,7 @@ public class JdaDiscordApi implements DiscordApi {
 
     @Override
     public void setTopic(@Nonnull String msg) {
-        if (!stopped && chatChannel != null) {
+        if (chatChannel != null) {
             chatChannel.getManager().setTopic(msg).submit(handleRateLimitations);
         }
     }
