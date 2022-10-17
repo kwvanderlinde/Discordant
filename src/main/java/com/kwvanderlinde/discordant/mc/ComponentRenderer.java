@@ -33,19 +33,41 @@ public class ComponentRenderer implements SemanticMessageRenderer<Component> {
                                                  .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(Language.getInstance().getOrDefault("chat.copy.click")).withStyle(ChatFormatting.GREEN)))
                                                  .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, part.text()))));
             }
-            else if (part.tag() instanceof SemanticMessage.PartTag.DiscordUser discordUser) {
-                // TODO Use hover and copy and click to good effect. Show roles etc that way.
+            else if (part.tag() instanceof SemanticMessage.PartTag.DiscordSender discordSender) {
+                final var roleText = ((discordSender.roleName() == null) ? "" : (discordSender.roleName() + " "))
+                        + discordSender.userTag();
+                final var hoverComponent = Component.literal(Language.getInstance().getOrDefault("chat.copy.click") + "; ")
+                                                    .withStyle(ChatFormatting.GREEN)
+                                                    .append(Component.literal(roleText)
+                                                                     .setStyle(Style.EMPTY.withColor(discordSender.roleColor())));
+                final var textToCopy = "@" + discordSender.userTag();
+
                 component.append(
-                        Component.literal(discordUser.roleName() + " " + part.text()).setStyle(Style.EMPTY.withColor(discordUser.roleColor())
-                                                                                                                 .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(Language.getInstance().getOrDefault("chat.copy.click") + " " + discordUser.userTag()).withStyle(ChatFormatting.GREEN)))
-                                                                                                                 .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, discordUser.userTag()))));
+                        Component.literal(part.text())
+                                 .setStyle(Style.EMPTY.withColor(discordSender.roleColor())
+                                                      .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent))
+                                                      .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textToCopy))));
+            }
+            else if (part.tag() instanceof SemanticMessage.PartTag.DiscordMention discordMention) {
+                final var roleText = ((discordMention.roleName() == null) ? "" : (discordMention.roleName() + " "))
+                        + discordMention.userTag();
+                final var hoverComponent = Component.literal(Language.getInstance().getOrDefault("chat.copy.click") + "; ")
+                                                    .withStyle(ChatFormatting.GREEN)
+                                                    .append(Component.literal(roleText)
+                                                                     .setStyle(Style.EMPTY.withColor(discordMention.roleColor())));
+                final var textToCopy = "@" + discordMention.userTag();
+
+                component.append(
+                        Component.literal("@" + part.text())
+                                .setStyle(Style.EMPTY.withColor(discordMention.roleColor())
+                                                  .withItalic(true)
+                                                  .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent))
+                                                  .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textToCopy))));
             }
             else if (part.tag() instanceof SemanticMessage.PartTag.Bot botName) {
                 component.append(
-                        Component.literal(part.text()).withStyle(
-                                Style.EMPTY.withColor(botName.color())
-                        )
-                );
+                        Component.literal(part.text())
+                                 .withStyle(Style.EMPTY.withColor(botName.color())));
             }
         });
         return component;

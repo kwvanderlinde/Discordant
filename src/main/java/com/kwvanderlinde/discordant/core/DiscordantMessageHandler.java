@@ -7,24 +7,27 @@ import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
+import com.kwvanderlinde.discordant.core.utils.StringUtils;
+import net.dv8tion.jda.api.entities.ISnowflake;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Message;
 import net.dv8tion.jda.api.events.message.MessageReceivedEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-import java.util.HashSet;
-import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class DiscordantMessageHandler implements MessageHandler, ReloadableComponent {
     private static final Logger logger = LogManager.getLogger(DiscordantMessageHandler.class);
-    private final Pattern pattern = Pattern.compile("(?<=!\\+).+?(?=!\\+|$|\\s)");
-    private final Pattern pattern2 = Pattern.compile("(?<=<@).+?(?=>)");
+    private final Pattern discordMentionParser = Pattern.compile("(?<=<@).+?(?=>)");
 
     private DiscordantConfig config;
     private final LinkedProfileManager linkedProfileManager;
@@ -153,65 +156,68 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
 
     public void handleChatMessage(MessageReceivedEvent e, String message) {
         Member member = e.getMember();
-        final Set<String> playerNamesToNotify = new HashSet<>();
-        if (message.contains("!+")) {
-            playerNamesToNotify.addAll(pattern.matcher(message).results().map(matchResult -> matchResult.group(0).toLowerCase()).collect(Collectors.toSet()));
-        }
-        if (message.contains("<@")) {
-            List<String> ids = pattern2.matcher(message).results().map(matchResult -> matchResult.group(0)).toList();
-            for (String s : ids) {
-                if (s.startsWith("!")) {
-                    s = s.substring(1);
-                }
-                String name = linkedProfileManager.getLinkedPlayerNameForDiscordId(s);
-                if (config.linking.enabled && config.enableMentions && name != null) {
-                    playerNamesToNotify.add(name.toLowerCase());
-                    message = message.replaceAll("<(@.|@)" + s + ">", "@" + name);
-                }
-                else {
-                    Member m = e.getGuild().getMemberById(s);
-                    if (m != null) {
-                        message = message.replaceAll("<(@.|@)" + s + ">", "@" + m.getEffectiveName());
-                    }
-                    else {
-                        message = message.replaceAll("<(@.|@)" + s + ">", "@Unknown");
-                    }
-                }
-            }
-        }
-        final var messageFinal = message;
+        // Map mentioned discord IDs to mentioned members.
+        final var memberMentions = e.getMessage()
+                                    .getMentions()
+                                    .getMembers()
+                                    .stream()
+                                    .collect(Collectors.toMap(
+                                            ISnowflake::getId,
+                                            Function.identity()
+                                    ));
 
+        final Set<String> playerNamesToNotify = memberMentions.keySet()
+                                                              .stream()
+                                                              .map(linkedProfileManager::getLinkedPlayerNameForDiscordId)
+                                                              .filter(Objects::nonNull)
+                                                              .map(String::toLowerCase)
+                                                              .collect(Collectors.toSet());
+
+        // We need to replace discord mentions with corresponding usernames. If we find an
+        // unlinked one, keep as the discord nickname.
+        final var notifyMessage = new SemanticMessage();
+        notifyMessage.append(SemanticMessage.bot("[Discord] "));
         if (member != null) {
-            String role = member.getRoles().isEmpty() ? "" : member.getRoles().get(0).getName();
-
-            final var notifyMessage = new SemanticMessage()
-                    .append(SemanticMessage.bot("[Discord] "))
-                    .append(getChatComponent(role, member))
-                    .append(" >> ");
-            final var generalMessage = notifyMessage.copy()
-                                                    .append(messageFinal);
-
-            server.getAllPlayers().forEach(player -> {
-                if (!playerNamesToNotify.contains(player.name().toLowerCase())) {
-                    player.sendSystemMessage(generalMessage);
-                }
-                else {
-                    final var name = player.name();
-                    // TODO Use a semantic message part instead of format codes. And trim the !+.
-                    final var replacement = messageFinal.replaceAll("(?i)!\\+" + name, "§a$0§r");
-                    player.sendSystemMessage(notifyMessage.copy().append(replacement));
-                    player.notifySound();
-                }
-            });
+            notifyMessage.append(SemanticMessage.discordSender(
+                    member.getEffectiveName(),
+                    member.getUser().getAsTag(),
+                    member.getRoles().isEmpty() ? "" : member.getRoles().get(0).getName(),
+                    member.getColorRaw()
+            ));
         }
-    }
+        notifyMessage.append(" says: ");
 
-    private SemanticMessage.Part getChatComponent(String role, Member member) {
-        return SemanticMessage.discordUser(
-                member.getEffectiveName(),
-                member.getUser().getAsTag(),
-                role,
-                member.getColorRaw()
-        );
+        StringUtils.chunk(Message.MentionType.USER.getPattern(), message, new StringUtils.ChunkConsumer() {
+            @Override
+            public void onMatch(MatchResult matchResult) {
+                // Convert the mentioned ID into a player name.
+                final var id = matchResult.group(1);
+                // The ID should always exist if things are working properly.
+                final var discordMember = memberMentions.get(id);
+                final var playerName = Objects.requireNonNullElse(
+                        linkedProfileManager.getLinkedPlayerNameForDiscordId(id),
+                        discordMember.getEffectiveName()
+                );
+                notifyMessage.append(SemanticMessage.discordMention(
+                        playerName,
+                        discordMember.getUser().getAsTag(),
+                        discordMember.getRoles().isEmpty() ? "" : discordMember.getRoles().get(0).getName(),
+                        discordMember.getColorRaw()
+                ));
+            }
+
+            @Override
+            public void onBetween(String contents) {
+                notifyMessage.append(contents);
+            }
+        });
+
+        server.getAllPlayers().forEach(player -> {
+            player.sendSystemMessage(notifyMessage);
+
+            if (playerNamesToNotify.contains(player.name().toLowerCase())) {
+                player.notifySound();
+            }
+        });
     }
 }

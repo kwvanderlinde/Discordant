@@ -1,5 +1,7 @@
 package com.kwvanderlinde.discordant.core.messages;
 
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Stream;
@@ -18,8 +20,12 @@ public class SemanticMessage {
         return new Part(botName, new PartTag.Bot());
     }
 
-    public static SemanticMessage.Part discordUser(String userName, String userTag, String roleName, int roleColor) {
-        return new Part(userName, new PartTag.DiscordUser(userTag, roleName, roleColor));
+    public static SemanticMessage.Part discordSender(@Nonnull String userName, @Nonnull String userTag, @Nullable String roleName, int roleColor) {
+        return new Part(userName, new PartTag.DiscordSender(userTag, roleName, roleColor));
+    }
+
+    public static SemanticMessage.Part discordMention(@Nonnull String userName, @Nonnull String userTag, @Nullable String roleName, int roleColor) {
+        return new Part(userName, new PartTag.DiscordMention(userTag, roleName, roleColor));
     }
 
     public static SemanticMessage.Part verificationCode(String code) {
@@ -64,7 +70,7 @@ public class SemanticMessage {
     public record Part(String text, PartTag tag) {
     }
 
-    public sealed interface PartTag permits PartTag.None, PartTag.Bot, PartTag.DiscordUser, PartTag.VerificationCode {
+    public sealed interface PartTag permits PartTag.None, PartTag.Bot, PartTag.DiscordSender, PartTag.DiscordMention, PartTag.VerificationCode {
         record None() implements PartTag {}
 
         record Bot() implements PartTag {
@@ -74,7 +80,9 @@ public class SemanticMessage {
             }
         }
 
-        record DiscordUser(String userTag, String roleName, int roleColor) implements PartTag {}
+        record DiscordSender(String userTag, String roleName, int roleColor) implements PartTag {}
+
+        record DiscordMention(String userTag, String roleName, int roleColor) implements PartTag {}
 
         record VerificationCode() implements PartTag {
             public int color() {

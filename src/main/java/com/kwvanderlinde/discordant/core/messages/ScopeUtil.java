@@ -1,6 +1,9 @@
 package com.kwvanderlinde.discordant.core.messages;
 
+import com.kwvanderlinde.discordant.core.utils.StringUtils;
+
 import java.util.Map;
+import java.util.regex.MatchResult;
 import java.util.regex.Pattern;
 
 public class ScopeUtil {
@@ -9,33 +12,24 @@ public class ScopeUtil {
     public static SemanticMessage instantiate(String template, Map<String, SemanticMessage.Part> values) {
         final var result = new SemanticMessage();
 
-        // TODO We can cache indices/parts per template string since there are a finite number of them.
-        final var matcher = parameterPattern.matcher(template);
-        var previousIndex = 0;
-        while (matcher.find()) {
-            final var fullStart = matcher.start(0);
-            final var fullEnd = matcher.end(0);
-            final var name = matcher.group(1);
-
-            if (fullStart != previousIndex) {
-                // There's stuff between the previous parameter and this one that needs to be added.
-                result.append(template.substring(previousIndex, fullStart));
+        StringUtils.chunk(parameterPattern, template, new StringUtils.ChunkConsumer() {
+            @Override
+            public void onMatch(MatchResult matchResult) {
+                final var name = matchResult.group(1);
+                if (values.containsKey(name)) {
+                    result.append(values.get(name));
+                }
+                else {
+                    // Unknown parameter, leave the whole thing in there, curly braces and all.
+                    result.append(matchResult.group(0));
+                }
             }
 
-            if (values.containsKey(name)) {
-                result.append(values.get(name));
+            @Override
+            public void onBetween(String contents) {
+                result.append(contents);
             }
-            else {
-                // Unknown parameter, leave the whole thing in there, curly braces and all.
-                result.append(template.substring(fullStart, fullEnd));
-            }
-
-            previousIndex = fullEnd;
-        }
-        // There's stuff between the last parameter and the end that needs to be added.
-        if (previousIndex != template.length()) {
-            result.append(template.substring(previousIndex));
-        }
+        });
 
         return result;
     }
