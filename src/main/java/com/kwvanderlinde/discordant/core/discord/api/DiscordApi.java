@@ -2,6 +2,7 @@ package com.kwvanderlinde.discordant.core.discord.api;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import javax.annotation.Nonnull;
@@ -16,6 +17,8 @@ public interface DiscordApi {
 
     // TODO Expose linked profiles instead of a guild directly.
     @Nullable Guild getGuild();
+
+    @Nullable User getUserById(String userId);
 
     // TODO Allow any number of targets for both console and chat messages (and embeds), each with
     //  their own configuration, messages, support for webhooks, and topics.

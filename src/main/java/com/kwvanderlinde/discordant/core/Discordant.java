@@ -288,9 +288,16 @@ public class Discordant {
         };
         commandHandlers.link = (player, respondWith) -> {
             // TODO If already linked, tell the user instead of generating a new code.
-            final var authCode = linkedProfileManager.generateLinkCode(player.uuid(), player.name());
-            final var scope = new PendingVerificationScope(scopeFactory.serverScope(server), authCode);
-            respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
+            final var existingDiscordId = linkedProfileManager.getDiscordIdForPlayerId(player.uuid());
+            if (existingDiscordId != null) {
+                respondWith.failure(config.minecraft.messages.accountAlreadyLinked
+                                            .instantiate(scopeFactory.playerScope(player.profile(), server, discordApi.getUserById(existingDiscordId))));
+            }
+            else {
+                final var authCode = linkedProfileManager.generateLinkCode(player.uuid(), player.name());
+                final var scope = new PendingVerificationScope(scopeFactory.serverScope(server), authCode);
+                respondWith.success(config.minecraft.messages.commandLinkMsg.instantiate(scope));
+            }
         };
         commandHandlers.unlink = (player, respondWith) -> {
             final var wasDeleted = linkedProfileManager.removeLinkedProfile(player.uuid());

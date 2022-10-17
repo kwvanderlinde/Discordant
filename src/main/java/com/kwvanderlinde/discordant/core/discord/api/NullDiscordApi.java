@@ -2,10 +2,11 @@ package com.kwvanderlinde.discordant.core.discord.api;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
-import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 public class NullDiscordApi implements DiscordApi {
     @Override
@@ -22,6 +23,11 @@ public class NullDiscordApi implements DiscordApi {
 
     @Override
     public @Nullable Guild getGuild() {
+        return null;
+    }
+
+    @Override
+    public @Nullable User getUserById(String userId) {
         return null;
     }
 

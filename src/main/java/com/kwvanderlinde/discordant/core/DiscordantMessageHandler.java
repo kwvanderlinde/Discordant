@@ -78,21 +78,12 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
             return;
         }
 
-        final var result = linkedProfileManager.verifyLinkedProfile(e.getChannel(), e.getAuthor(), message);
-        if (result instanceof LinkedProfileManager.InvalidToken invalidToken) {
-            logger.warn("Verification attempt with invalid token: {}", invalidToken.token());
-        }
-        else if (result instanceof LinkedProfileManager.InvalidUuid invalidUuid) {
-            logger.warn("Verification attempt with invalid UUID: {}", invalidUuid.uuid());
-        }
-        else if (result instanceof LinkedProfileManager.InvalidCode invalidCode) {
+        final var result = linkedProfileManager.verifyLinkedProfile(e.getAuthor().getId(), message);
+        if (result instanceof LinkedProfileManager.InvalidCode invalidCode) {
             logger.warn("Verification attempt with invalid authentication code: {}", invalidCode.code());
         }
-        else if (result instanceof LinkedProfileManager.NoPendingVerification noPendingVerification) {
-            logger.warn("Verification attempt for player with no pending verification: {}", noPendingVerification.uuid());
-        }
         else if (result instanceof LinkedProfileManager.IncorrectCode incorrectCode) {
-            logger.warn("Verification attempt for player with incorrect code: {}, {}", incorrectCode.uuid(), incorrectCode.code());
+            logger.warn("Verification attempt for with incorrect code: {}", incorrectCode.code());
         }
         else if (result instanceof LinkedProfileManager.AlreadyLinked alreadyLinked) {
             // Profile entry already exists. Tell that to the command issuer.

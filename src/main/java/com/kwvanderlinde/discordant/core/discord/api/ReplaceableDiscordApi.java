@@ -2,6 +2,7 @@ package com.kwvanderlinde.discordant.core.discord.api;
 
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
 
 import javax.annotation.Nonnull;
@@ -47,6 +48,11 @@ public class ReplaceableDiscordApi implements DiscordApi {
     @Override
     public @Nullable Guild getGuild() {
         return this.api.getGuild();
+    }
+
+    @Override
+    public @Nullable User getUserById(String userId) {
+        return this.api.getUserById(userId);
     }
 
     @Override

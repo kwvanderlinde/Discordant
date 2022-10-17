@@ -6,6 +6,7 @@ import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.entities.MessageEmbed;
+import net.dv8tion.jda.api.entities.User;
 import net.dv8tion.jda.api.entities.channel.ChannelType;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.entities.channel.middleman.MessageChannel;
@@ -148,6 +149,11 @@ public class JdaDiscordApi implements DiscordApi {
     @Nullable
     public Guild getGuild() {
         return guild;
+    }
+
+    @Override
+    public @Nullable User getUserById(String userId) {
+        return jda.getUserById(userId);
     }
 
     @Override
