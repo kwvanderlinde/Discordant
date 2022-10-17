@@ -62,7 +62,6 @@ public class Discordant {
 
     private final TickedClock clock;
     private final ConfigManager configManager;
-    private final EmbedFactory embedFactory;
 
     private @Nullable Server server;
 
@@ -86,7 +85,7 @@ public class Discordant {
                 new HashTableLinkedProfileRepository(),
                 new ConfigProfileRepository(configRoot.resolve("linked-profiles"))
         );
-        embedFactory = new EmbedFactory();
+        final var embedFactory = new EmbedFactory();
 
         configManager = new ConfigManager(configRoot);
         try {
@@ -114,7 +113,6 @@ public class Discordant {
                 linkedProfileManager,
                 scopeFactory,
                 embedFactory,
-                server,
                 discordApi
         );
 
@@ -126,6 +124,7 @@ public class Discordant {
         minecraftIntegration.events().onServerStarted((server) -> {
             Discordant.this.server = server;
 
+            discordantMessageHandler.setServer(server);
             discordApi.addHandler(discordantMessageHandler);
 
             // TODO Attach server icon as a thumbnail or image if possible.

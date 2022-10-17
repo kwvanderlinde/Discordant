@@ -13,6 +13,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -29,26 +30,28 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
     private final LinkedProfileManager linkedProfileManager;
     private final ScopeFactory scopeFactory;
     private final EmbedFactory embedFactory;
-    private final Server server;
     private final DiscordApi discordApi;
+    private @Nullable Server server;
 
     public DiscordantMessageHandler(@Nonnull DiscordantConfig config,
                                     @Nonnull LinkedProfileManager linkedProfileManager,
                                     @Nonnull ScopeFactory scopeFactory,
                                     @Nonnull EmbedFactory embedFactory,
-                                    @Nonnull Server server,
                                     @Nonnull DiscordApi discordApi) {
         this.config = config;
         this.linkedProfileManager = linkedProfileManager;
         this.scopeFactory = scopeFactory;
         this.embedFactory = embedFactory;
-        this.server = server;
         this.discordApi = discordApi;
     }
 
     @Override
     public void reload(DiscordantConfig newConfig) {
         this.config = newConfig;
+    }
+
+    public void setServer(@Nonnull Server server) {
+        this.server = server;
     }
 
     @Override
