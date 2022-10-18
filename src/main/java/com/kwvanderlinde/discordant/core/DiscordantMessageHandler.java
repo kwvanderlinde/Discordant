@@ -165,6 +165,22 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
                                             ISnowflake::getId,
                                             Function.identity()
                                     ));
+        final var roleMentions = e.getMessage()
+                                    .getMentions()
+                                    .getRoles()
+                                    .stream()
+                                    .collect(Collectors.toMap(
+                                            ISnowflake::getId,
+                                            Function.identity()
+                                    ));
+        final var channelMentions = e.getMessage()
+                                  .getMentions()
+                                  .getChannels()
+                                  .stream()
+                                  .collect(Collectors.toMap(
+                                          ISnowflake::getId,
+                                          Function.identity()
+                                  ));
 
         final Set<String> playerNamesToNotify = memberMentions.keySet()
                                                               .stream()
@@ -187,23 +203,53 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
         }
         notifyMessage.append(" says: ");
 
-        StringUtils.chunk(Message.MentionType.USER.getPattern(), message, new StringUtils.ChunkConsumer() {
+        final var fullPattern = Message.MentionType.USER.getPattern().pattern() + "|" + Message.MentionType.ROLE.getPattern().pattern() + "|" + Message.MentionType.CHANNEL.getPattern().pattern();
+        // final var fullPattern = Message.MentionType.USER.getPattern().pattern()
+
+        final var mentionPattern = Pattern.compile("<(@!?|@&|#)(\\d+)>");
+
+        StringUtils.chunk(mentionPattern, message, new StringUtils.ChunkConsumer() {
             @Override
             public void onMatch(MatchResult matchResult) {
                 // Convert the mentioned ID into a player name.
-                final var id = matchResult.group(1);
-                // The ID should always exist if things are working properly.
-                final var discordMember = memberMentions.get(id);
-                final var playerName = Objects.requireNonNullElse(
-                        linkedProfileManager.getLinkedPlayerNameForDiscordId(id),
-                        discordMember.getEffectiveName()
-                );
-                notifyMessage.append(SemanticMessage.discordMention(
-                        playerName,
-                        discordMember.getUser().getAsTag(),
-                        discordMember.getRoles().isEmpty() ? "" : discordMember.getRoles().get(0).getName(),
-                        discordMember.getColorRaw()
-                ));
+                final var discriminator = matchResult.group(1);
+                final var id = matchResult.group(2);
+
+                switch (discriminator) {
+                    case "@", "@!" -> {
+                        // Mentioned a member.
+                        // The ID should always exist if things are working properly.
+                        final var discordMember = memberMentions.get(id);
+                        final var playerName = Objects.requireNonNullElse(
+                                linkedProfileManager.getLinkedPlayerNameForDiscordId(id),
+                                discordMember.getEffectiveName()
+                        );
+                        notifyMessage.append(SemanticMessage.discordMention(
+                                playerName,
+                                discordMember.getUser().getAsTag(),
+                                discordMember.getRoles().isEmpty() ? "" : discordMember.getRoles().get(0).getName(),
+                                discordMember.getColorRaw()
+                        ));
+                    }
+                    case "@&" -> {
+                        // Mentioned a role.
+                        // The ID should always exist if things are working properly.
+                        final var discordRole = roleMentions.get(id);
+                        notifyMessage.append(SemanticMessage.discordRoleMention(
+                                discordRole.getName(),
+                                discordRole.getColorRaw()
+                        ));
+                    }
+                    case "#" -> {
+                        // Mentioned a channel.
+                        // The ID should always exist if things are working properly.
+                        final var discordChannel = channelMentions.get(id);
+                        notifyMessage.append(SemanticMessage.discordChannelMention(
+                                discordChannel.getName(),
+                                discordChannel.getJumpUrl()
+                        ));
+                    }
+                }
             }
 
             @Override

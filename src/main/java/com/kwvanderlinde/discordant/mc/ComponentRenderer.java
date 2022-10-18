@@ -64,6 +64,29 @@ public class ComponentRenderer implements SemanticMessageRenderer<Component> {
                                                   .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent))
                                                   .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textToCopy))));
             }
+            else if (part.tag() instanceof SemanticMessage.PartTag.DiscordRoleMention discordRoleMention) {
+                final var hoverComponent = Component.literal(Language.getInstance().getOrDefault("chat.copy.click"))
+                                                    .withStyle(ChatFormatting.GREEN);
+                final var textToCopy = "@" + part.text();
+
+                component.append(
+                        Component.literal("@" + part.text())
+                                 .setStyle(Style.EMPTY.withColor(discordRoleMention.color())
+                                                      .withItalic(true)
+                                                      .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent))
+                                                      .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, textToCopy))));
+            }
+            else if (part.tag() instanceof SemanticMessage.PartTag.DiscordChannelMention discordChannelMention) {
+                final var hoverComponent = Component.literal(Language.getInstance().getOrDefault("chat.link.open"))
+                                                    .withStyle(ChatFormatting.GREEN);
+
+                component.append(
+                        Component.literal("#" + part.text())
+                                 .setStyle(Style.EMPTY.withUnderlined(true)
+                                                      .withColor(0x0083EE)
+                                                      .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent))
+                                                      .withClickEvent(new ClickEvent(ClickEvent.Action.OPEN_URL, discordChannelMention.jumpUrl()))));
+            }
             else if (part.tag() instanceof SemanticMessage.PartTag.Bot botName) {
                 component.append(
                         Component.literal(part.text())

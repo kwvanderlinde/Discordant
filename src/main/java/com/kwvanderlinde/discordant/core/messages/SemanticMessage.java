@@ -28,6 +28,14 @@ public class SemanticMessage {
         return new Part(userName, new PartTag.DiscordMention(userTag, roleName, roleColor));
     }
 
+    public static SemanticMessage.Part discordRoleMention(@Nonnull String name, int color) {
+        return new Part(name, new PartTag.DiscordRoleMention(color));
+    }
+
+    public static SemanticMessage.Part discordChannelMention(@Nonnull String name, @Nonnull String jumpUrl) {
+        return new Part(name, new PartTag.DiscordChannelMention(jumpUrl));
+    }
+
     public static SemanticMessage.Part verificationCode(String code) {
         return new Part(code, new PartTag.VerificationCode());
     }
@@ -70,7 +78,7 @@ public class SemanticMessage {
     public record Part(String text, PartTag tag) {
     }
 
-    public sealed interface PartTag permits PartTag.None, PartTag.Bot, PartTag.DiscordSender, PartTag.DiscordMention, PartTag.VerificationCode {
+    public sealed interface PartTag permits PartTag.None, PartTag.Bot, PartTag.DiscordSender, PartTag.DiscordMention, PartTag.DiscordRoleMention, PartTag.DiscordChannelMention, PartTag.VerificationCode {
         record None() implements PartTag {}
 
         record Bot() implements PartTag {
@@ -83,6 +91,10 @@ public class SemanticMessage {
         record DiscordSender(String userTag, String roleName, int roleColor) implements PartTag {}
 
         record DiscordMention(String userTag, String roleName, int roleColor) implements PartTag {}
+
+        record DiscordRoleMention(int color) implements PartTag {}
+
+        record DiscordChannelMention(String jumpUrl) implements PartTag {}
 
         record VerificationCode() implements PartTag {
             public int color() {
