@@ -3,6 +3,7 @@ package com.kwvanderlinde.discordant.mc.integration;
 import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
 import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
+import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.mc.ComponentRenderer;
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
 import com.kwvanderlinde.discordant.mc.integration.ProfileAdapter;
@@ -22,6 +23,11 @@ public class PlayerAdapter implements Player {
     @Override
     public Profile profile() {
         return new ProfileAdapter(player.getGameProfile());
+    }
+
+    @Override
+    public Server server() {
+        return new ServerAdapter(player.getServer());
     }
 
     @Override

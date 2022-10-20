@@ -7,6 +7,8 @@ import java.util.UUID;
 public interface Player {
     Profile profile();
 
+    Server server();
+
     UUID uuid();
 
     String name();

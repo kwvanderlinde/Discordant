@@ -7,7 +7,9 @@ public interface Integration {
 
     void setLinkingCommandsEnabled(boolean linkingEnabled);
 
-    Events events();
+    void addHandler(ServerEventHandler handler);
 
-    CommandHandlers commandsHandlers();
+    void addHandler(PlayerEventHandler handler);
+
+    void addHandler(CommandEventHandler handler);
 }

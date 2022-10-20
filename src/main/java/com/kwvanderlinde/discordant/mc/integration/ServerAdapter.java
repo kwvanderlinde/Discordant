@@ -2,15 +2,16 @@ package com.kwvanderlinde.discordant.mc.integration;
 
 import com.kwvanderlinde.discordant.core.modinterfaces.Player;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.dedicated.DedicatedServer;
 
 import java.util.UUID;
 import java.util.stream.Stream;
 
 public final class ServerAdapter implements Server {
-    private final DedicatedServer server;
+    private final MinecraftServer server;
 
-    public ServerAdapter(DedicatedServer server) {
+    public ServerAdapter(MinecraftServer server) {
         this.server = server;
     }
 
@@ -50,6 +51,9 @@ public final class ServerAdapter implements Server {
 
     @Override
     public void runCommand(String command) {
-        server.execute(() -> server.handleConsoleInput(command, server.createCommandSourceStack()));
+        if (server instanceof DedicatedServer dedicatedServer) {
+            server.execute(() -> dedicatedServer.handleConsoleInput(command, server.createCommandSourceStack()));
+        }
+        // TODO Should we account for the non-dedicated server cast? What would it mean?
     }
 }
