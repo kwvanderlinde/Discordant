@@ -6,6 +6,7 @@ public class DiscordConfig {
     public String chatChannelId = "";
     public String consoleChannelId = "";
     public boolean enableLogsForwarding = true;
+    public boolean enableMentions = true;
 
     public DiscordMessagesConfig messages = new DiscordMessagesConfig();
     public DiscordTopicsConfig topics = new DiscordTopicsConfig();
