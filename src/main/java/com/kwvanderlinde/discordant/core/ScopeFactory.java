@@ -65,14 +65,15 @@ public class ScopeFactory implements ReloadableComponent{
 
     public String getPlayerIconUrl(Profile profile, Server server) {
         final var scopeValues = profileScope(profile, server).values();
-        return ScopeUtil.instantiate(config.playerIconUrl, scopeValues)
+        return ScopeUtil.instantiate(config.renderUrls.icon, scopeValues)
                         .reduce(PlainTextRenderer.instance());
     }
 
     public Map<String, String> getAvatarUrls(Profile profile, Server server) {
         final var result = new HashMap<String, String>();
         final var scopeValues = profileScope(profile, server).values();
-        for (final var entry : config.avatarUrls.entrySet()) {
+
+        for (final var entry : config.renderUrls.other.entrySet()) {
             final var url = ScopeUtil.instantiate(entry.getValue(), scopeValues)
                                      .reduce(PlainTextRenderer.instance());
             result.put(entry.getKey(), url);
