@@ -12,6 +12,8 @@ import com.kwvanderlinde.discordant.mc.DiscordantCommands;
 import com.kwvanderlinde.discordant.mc.PlayerEvents;
 import com.kwvanderlinde.discordant.mc.mixin.ServerLoginPacketListenerImpl_GameProfileAccessor;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
+import net.fabricmc.fabric.api.entity.event.v1.ServerPlayerEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
@@ -20,6 +22,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.dedicated.DedicatedServer;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.nio.file.Path;
 
@@ -50,7 +53,6 @@ public final class ModIntegration implements Integration {
             serverEventHandler.onTickEnd(new ServerAdapter(server));
         });
 
-
         ServerMessageEvents.CHAT_MESSAGE.register((message, sender, params) -> {
             final var adaptedPlayer = new PlayerAdapter(sender);
             final var plainMessage = message.signedContent().plain();
@@ -74,10 +76,12 @@ public final class ModIntegration implements Integration {
             final var adaptedPlayer = new PlayerAdapter(netHandler.getPlayer());
             playerEventHandler.onPlayerDisconnect(adaptedPlayer);
         });
-        PlayerEvents.DEATH.register((player, damageSource) -> {
-            final var adaptedPlayer = new PlayerAdapter(player);
-            final var message = damageSource.getLocalizedDeathMessage(player).getString();
-            playerEventHandler.onPlayerDeath(adaptedPlayer, message);
+        ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
+            if (entity instanceof ServerPlayer player) {
+                final var adaptedPlayer = new PlayerAdapter(player);
+                final var message = damageSource.getLocalizedDeathMessage(player).getString();
+                playerEventHandler.onPlayerDeath(adaptedPlayer, message);
+            }
         });
         PlayerEvents.ADVANCEMENT_AWARDED.register((player, advancement) -> {
             final var adaptedPlayer = new PlayerAdapter(player);

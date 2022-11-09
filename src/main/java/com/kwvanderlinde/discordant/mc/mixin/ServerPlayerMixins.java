@@ -1,12 +1,10 @@
 package com.kwvanderlinde.discordant.mc.mixin;
 
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.PlayerEvents;
 import com.mojang.authlib.GameProfile;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.player.ProfilePublicKey;
 import net.minecraft.world.level.Level;
@@ -29,12 +27,6 @@ public abstract class ServerPlayerMixins extends Player implements IServerPlayer
 
     public ServerPlayerMixins(Level level, BlockPos blockPos, float f, GameProfile gameProfile, @Nullable ProfilePublicKey profilePublicKey) {
         super(level, blockPos, f, gameProfile, profilePublicKey);
-    }
-
-
-    @Inject(method = "die", at = @At("TAIL"))
-    public void sendDeathMsg(DamageSource damageSource, CallbackInfo ci) {
-        PlayerEvents.DEATH.invoker().afterDeath((ServerPlayer) (Object) this, damageSource);
     }
 
     @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
