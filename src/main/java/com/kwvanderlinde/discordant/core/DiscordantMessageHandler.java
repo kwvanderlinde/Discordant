@@ -27,7 +27,6 @@ import java.util.stream.Collectors;
 
 public class DiscordantMessageHandler implements MessageHandler, ReloadableComponent {
     private static final Logger logger = LogManager.getLogger(DiscordantMessageHandler.class);
-    private final Pattern discordMentionParser = Pattern.compile("(?<=<@).+?(?=>)");
 
     private DiscordantConfig config;
     private final LinkedProfileManager linkedProfileManager;

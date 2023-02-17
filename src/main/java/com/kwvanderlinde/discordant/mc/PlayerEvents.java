@@ -3,9 +3,7 @@ package com.kwvanderlinde.discordant.mc;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.advancements.Advancement;
-import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.damagesource.DamageSource;
 
 /**
  * It is my firm desire that any custom events are made obsolete by fabric.
@@ -29,7 +27,7 @@ public class PlayerEvents {
          * Called when a player dies for realsies.
          *
          * @param player the player
-         * @param advancement the awarded advancment
+         * @param advancement the awarded advancement
          */
         void advancementAwarded(ServerPlayer player, Advancement advancement);
     }

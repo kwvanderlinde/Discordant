@@ -6,11 +6,10 @@ import com.kwvanderlinde.discordant.core.modinterfaces.Profile;
 import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.mc.ComponentRenderer;
 import com.kwvanderlinde.discordant.mc.IServerPlayer;
-import com.kwvanderlinde.discordant.mc.integration.ProfileAdapter;
+
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-
 import java.util.UUID;
 
 public class PlayerAdapter implements Player {
@@ -62,7 +61,7 @@ public class PlayerAdapter implements Player {
     public void notifySound() {
         final var serverPlayer = (IServerPlayer) player;
         if (serverPlayer.getNotifyState()) {
-            player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING, SoundSource.MASTER, 1.0F, 1.0F);
+            player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.MASTER, 1.0F, 1.0F);
         }
     }
 }

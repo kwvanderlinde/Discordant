@@ -52,7 +52,7 @@ public final class ServerAdapter implements Server {
     @Override
     public void runCommand(String command) {
         if (server instanceof DedicatedServer dedicatedServer) {
-            server.execute(() -> dedicatedServer.handleConsoleInput(command, server.createCommandSourceStack()));
+            server.execute(() -> dedicatedServer.runCommand(command));
         }
         // TODO Should we account for the non-dedicated server cast? What would it mean?
     }
