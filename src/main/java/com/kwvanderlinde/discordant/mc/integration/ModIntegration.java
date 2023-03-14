@@ -63,7 +63,7 @@ public final class ModIntegration implements Integration {
             playerEventHandler.onPlayerJoinAttempt(adaptedServer, profile, reason -> netHandler.disconnect(reason.reduce(ComponentRenderer.instance())));
         });
         ServerPlayConnectionEvents.JOIN.register((netHandler, sender, server) -> {
-            if (!netHandler.getConnection().isConnected()) {
+            if (!netHandler.isAcceptingMessages()) {
                 // Player connection must have been rejected.
                 return;
             }

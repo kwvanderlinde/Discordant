@@ -45,7 +45,6 @@ public class DiscordantCommands {
                               .requires(s -> linkingEnabled)
                               .executes(context -> unlink(context.getSource(), commandEventHandler)));
 
-        // TODO Gate reload behind OP
         commands.then(Commands.literal("reload")
                               .requires(s -> s.hasPermission(4))
                               .executes(context -> { commandEventHandler.onReload(); return 0; }));
