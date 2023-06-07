@@ -13,7 +13,7 @@ public class DiscordantCommands {
     private record CommandSourceStackResponder(CommandSourceStack source) implements CommandEventHandler.Responder {
         @Override
         public void success(SemanticMessage message) {
-            source.sendSuccess(message.reduce(ComponentRenderer.instance()), false);
+            source.sendSuccess(() -> message.reduce(ComponentRenderer.instance()), false);
         }
 
         @Override
