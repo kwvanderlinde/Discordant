@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.mc.integration;
 
+import com.kwvanderlinde.discordant.core.modinterfaces.Advancement;
 import com.kwvanderlinde.discordant.core.modinterfaces.BroadcastingCommandEventHandler;
 import com.kwvanderlinde.discordant.core.modinterfaces.BroadcastingPlayerEventHandler;
 import com.kwvanderlinde.discordant.core.modinterfaces.BroadcastingServerEventHandler;
@@ -83,10 +84,12 @@ public final class ModIntegration implements Integration {
         });
         PlayerEvents.ADVANCEMENT_AWARDED.register((player, advancement) -> {
             final var adaptedPlayer = new PlayerAdapter(player);
-            final var adaptedAdvancement = new AdvancementAdapter(
-                    advancement.getDisplay().getFrame().getName(),
-                    advancement.getDisplay().getTitle().getString(),
-                    advancement.getDisplay().getDescription().getString()
+            final var adaptedAdvancement = new Advancement(
+                    advancement.display().map(display -> new Advancement.Display(
+                            display.getTitle().getString(),
+                            display.getDescription().getString(),
+                            new Advancement.Type(display.getType().name(), display.getType().getChatColor().getColor())
+                    ))
             );
             playerEventHandler.onPlayerAdvancement(adaptedPlayer, adaptedAdvancement);
         });

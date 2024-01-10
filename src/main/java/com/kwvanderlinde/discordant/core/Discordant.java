@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
 /**
  * The main handle to the core API.
  *
- * Can be consumed by minecraft integrators in order to support new minecraft versions.
+ * <p>Can be consumed by minecraft integrators in order to support new minecraft versions.
  */
 public class Discordant {
     private static final Logger logger = LogManager.getLogger(Discordant.class);
@@ -333,16 +333,19 @@ public class Discordant {
 
         @Override
         public void onPlayerAdvancement(Player player, Advancement advancement) {
-            final var server = player.server();
-            // TODO Look up the linked profile and pass the corresponding discord user.
-            final var message = config.discord.messages.playerAdvancement
-                    .instantiate(new AdvancementScope(
-                            scopeFactory.playerScope(player.profile(), server, null),
-                            advancement.name(),
-                            advancement.title(),
-                            advancement.description()
-                    ));
-            discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
+            advancement.display().ifPresent(display -> {
+                final var server = player.server();
+                // TODO Look up the linked profile and pass the corresponding discord user.
+                // TODO Allow the message to use the RGB color.
+                final var message = config.discord.messages.playerAdvancement
+                        .instantiate(new AdvancementScope(
+                                scopeFactory.playerScope(player.profile(), server, null),
+                                display.type().name(),
+                                display.title(),
+                                display.description()
+                        ));
+                discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
+            });
         }
     }
 

@@ -1,9 +1,12 @@
 package com.kwvanderlinde.discordant.core.modinterfaces;
 
-public interface Advancement {
-    String name();
+import javax.annotation.Nullable;
+import java.util.Optional;
 
-    String title();
+public record Advancement(Optional<Display> display) {
+    public record Type(String name, @Nullable Integer rgb) {
+    }
 
-    String description();
+    public record Display(String title, String description, Type type) {
+    }
 }
