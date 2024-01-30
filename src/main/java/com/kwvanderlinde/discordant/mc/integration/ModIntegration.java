@@ -20,6 +20,7 @@ import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.advancements.DisplayInfo;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -88,7 +89,8 @@ public final class ModIntegration implements Integration {
                     advancement.display().map(display -> new Advancement.Display(
                             display.getTitle().getString(),
                             display.getDescription().getString(),
-                            new Advancement.Type(display.getType().name(), display.getType().getChatColor().getColor())
+                            new Advancement.Type(display.getType().name(), display.getType().getChatColor().getColor()),
+                            display.shouldAnnounceChat()
                     ))
             );
             playerEventHandler.onPlayerAdvancement(adaptedPlayer, adaptedAdvancement);

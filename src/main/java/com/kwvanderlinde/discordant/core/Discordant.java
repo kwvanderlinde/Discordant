@@ -334,6 +334,10 @@ public class Discordant {
         @Override
         public void onPlayerAdvancement(Player player, Advancement advancement) {
             advancement.display().ifPresent(display -> {
+                if (!display.announceToChat()) {
+                    return;
+                }
+
                 final var server = player.server();
                 // TODO Look up the linked profile and pass the corresponding discord user.
                 // TODO Allow the message to use the RGB color.
