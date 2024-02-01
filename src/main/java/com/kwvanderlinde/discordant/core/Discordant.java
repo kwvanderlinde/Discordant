@@ -133,6 +133,8 @@ public class Discordant {
     }
 
     private DiscordantConfig loadAndValidateConfig() throws ConfigurationValidationFailed {
+        // TODO Hook validation into the config manager.
+
         try {
             final var config = configManager.readConfigSettings();
 
@@ -143,6 +145,13 @@ public class Discordant {
             if ("".equals(discordConfig.serverId) || null == discordConfig.serverId) {
                 throw new ConfigurationValidationFailed("A server ID must be provided in config.json!");
             }
+
+            for (final var channelEntry : discordConfig.channels.entrySet()) {
+                if ("".equals(channelEntry.getKey())) {
+                    throw new ConfigurationValidationFailed("All channels must have an ID");
+                }
+            }
+
             if ("".equals(discordConfig.chatChannelId) || null == discordConfig.chatChannelId) {
                 throw new ConfigurationValidationFailed("A chat channel ID must be provided in config.json!");
             }

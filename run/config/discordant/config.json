@@ -1,0 +1,143 @@
+{
+  "renderUrls": {
+    "icon": "https://patmos.kwvanderlinde.com/avatar?uuid={player.uuid}&type=avatar&ts={server.time}",
+    "head": "https://patmos.kwvanderlinde.com/avatar?uuid={player.uuid}&type=head&ts={server.time}",
+    "body": "https://patmos.kwvanderlinde.com/avatar?uuid={player.uuid}&type=body&ts={server.time}"
+  },
+  "linking": {
+    "enabled": true,
+    "required": false,
+    "pendingTimeout": 600000
+  },
+  "discord": {
+    "serverId": "754450546018091019",
+    "token": "NzU0NDQ4NTE1MzMzMzU3NjY5.GxpHeE.DKaNTzPVMUtOIYw-A2_CTU7W9HcfxuSNaWdsk0",
+
+    "channels": {
+      "1024598684895297546": {
+        "tags": ["chat"],
+        "enabled": true,
+        "topic": "Players online: {server.playerCount} / {server.maxPlayerCount} | Thank you to Crafatar for providing avatars: https://crafatar.com",
+        "shutdownTopic": "Server offline",
+        "commandPrefix": "!",
+        "mentionPrefix": "!@"
+      },
+      "1024598751597297724": {
+        "tags": ["log"],
+        "enabled": true,
+        "topic": null,
+        "shutdownTopic": null,
+        "commandPrefix": "",
+        "mentionPrefix": null
+      }
+    ,
+
+    "chatChannelId": "1024598684895297546",
+    "consoleChannelId": "1024598751597297724",
+    "enableLogsForwarding": false,
+    "enableMentions": true,
+    "messages": {
+      "serverStart": {
+        "title": "{server.name} started",
+        "color": "00FF00",
+        "thumbnail": null,
+        "description": "_{server.motd}_"
+      },
+      "serverStop": {
+        "title": "{server.name} stopped",
+        "color": "FF0000",
+        "thumbnail": null,
+        "description": null
+      },
+      "playerJoin": {
+        "title": "Player joined",
+        "color": "FF2F97",
+        "image": null,
+        "thumbnail": "{player.avatarUrls|body}",
+        "description": "{player.name} joined the server!"
+      },
+      "playerLeave": {
+        "title": "Player left",
+        "color": "9F1D5E",
+        "thumbnail": null,
+        "description": "{player.name} left the server!"
+      },
+      "playerAdvancement": {
+        "title": "{player.name} has completed the challenge {advancement.title} [{advancement.name}]",
+        "color": "BF1AED",
+        "thumbnail": "{player.avatarUrls|head}",
+        "description": "{advancement.description}"
+      },
+      "playerDeath": {
+        "title": "The unthinkable has happened",
+        "color": "000000",
+        "thumbnail": "{player.avatarUrls|head}",
+        "description": "{death.message}"
+      },
+      "playerChat": {
+        "title": null,
+        "color": "00FFFF",
+        "thumbnail": null,
+        "description": "{chat.message}"
+      },
+      "successfulVerification": {
+        "title": "Account linking successful!",
+        "color": "92D22E",
+        "thumbnail": null,
+        "description": "Successfully linked discord account to your game account {player.name}({player.uuid})"
+      },
+      "alreadyLinked": {
+        "title": "Account already linked",
+        "color": "992D22",
+        "thumbnail": null,
+        "description": "Game account {player.name} is already linked to {player.discordName}"
+      },
+      "onlinePlayers": {
+        "title": null,
+        "color": "202020",
+        "thumbnail": null,
+        "description": "Currently there are {server.playerCount} / {server.maxPlayerCount} players on {server.name}.\n\n_Players online:_ {server.players}"
+      },
+      "noPlayers": {
+        "title": null,
+        "color": "202020",
+        "thumbnail": null,
+        "description": "Currently there are no players on {server.name}"
+      }
+    },
+    "topics": {
+      "channelTopic": {
+        "description": "Players online: {server.playerCount} / {server.maxPlayerCount} | Thank you to Crafatar for providing avatars: https://crafatar.com"
+      },
+      "shutdownTopic": {
+        "description": "Server offline"
+      }
+    }
+  },
+  "minecraft": {
+    "serverName": "Minecraft Server",
+    "messages": {
+      "verificationDisconnect": {
+        "text": "You need to verify your account via discord. Your code is {verification.code}. Send this code to {server.botName} PM."
+      },
+      "commandLinkMsg": {
+        "text": "Your code is {verification.code}. Send this code to {server.botName} PM."
+      },
+      "accountAlreadyLinked": {
+        "text": "Your account is already linked to {player.discordTag}"
+      },
+      "codeUnlinkMsg": {
+        "text": "Unlinked discord profile successfully"
+      },
+      "codeUnlinkFail": {
+        "text": "Failed to unlink discord profile, profile not found!"
+      },
+      "mentionStateUpdateResponse": {
+        "text": "Mention notifications are now {notifications.enablement}"
+      },
+      "mentionStateQueryResponse": {
+        "text": "Mention notifications are {notifications.enablement}"
+      }
+    }
+  }
+}

@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.core;
 
+import com.kwvanderlinde.discordant.core.config.DiscordChannelConfig;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import com.kwvanderlinde.discordant.core.discord.api.DiscordApi;
 import com.kwvanderlinde.discordant.core.discord.api.MessageHandler;
@@ -57,25 +58,37 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
     }
 
     @Override
-    public void onChatInput(MessageReceivedEvent e, String message) {
-        if (!message.isEmpty()) {
-            if (!message.startsWith("!@") && message.startsWith("!")) {
-                handleCommandInput(e, message.substring(1));
+    public void onChannelInput(MessageReceivedEvent e, String message) {
+        final var channelConfig = config.discord.channels.get(e.getChannel().getId());
+        if (channelConfig == null) {
+            // Unrecognized channel. Don't do anything.
+            return;
+        }
+
+        // Normal chat, or command?
+        // It's possible for the mention prefix to include the command prefix (as in the defaults).
+        // We don't want to confuse a leading mention with a command.
+        final var startWithMention = channelConfig.mentionPrefix != null && message.startsWith(channelConfig.mentionPrefix);
+
+        if (!startWithMention
+                && (channelConfig.commandPrefix != null && message.startsWith(channelConfig.commandPrefix))) {
+            String command = message.substring(channelConfig.commandPrefix.length()).trim();
+            String arguments = "";
+            final var spaceIndex = command.indexOf(' ');
+            if (spaceIndex >= 0) {
+                arguments = command.substring(spaceIndex + 1);
+                command = command.substring(0, spaceIndex);
             }
-            else {
-                handleChatMessage(e, message);
-            }
+
+            handleCommandInput(e, command, arguments);
+        }
+        else {
+            handleChatMessage(e, message);
         }
     }
 
     @Override
-    public void onConsoleInput(MessageReceivedEvent e, String message) {
-        logger.info("Discord user " + e.getAuthor().getName() + " running command " + message);
-        server.runCommand(message);
-    }
-
-    @Override
-    public void onBotPmInput(MessageReceivedEvent e, String message) {
+    public void onBotPrivateMessage(MessageReceivedEvent e, String message) {
         if (!config.linking.enabled) {
             return;
         }
@@ -136,19 +149,25 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
     }
 
 
-    private void handleCommandInput(MessageReceivedEvent event, String command) {
-        if (command.startsWith("list")) {
-            final var players = server.getAllPlayers().toList();
-            if (players.isEmpty()) {
-                final var message = config.discord.messages.noPlayers
-                        .instantiate(scopeFactory.serverScope(server));
-                discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
-            }
-            else {
-                final var message = config.discord.messages.onlinePlayers
-                        .instantiate(scopeFactory.serverScope(server));
+    private void handleCommandInput(MessageReceivedEvent event, String command, String arguments) {
+        switch (command) {
+            case "list" -> {
+                final var players = server.getAllPlayers().toList();
+                if (players.isEmpty()) {
+                    final var message = config.discord.messages.noPlayers
+                            .instantiate(scopeFactory.serverScope(server));
+                    discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
+                }
+                else {
+                    final var message = config.discord.messages.onlinePlayers
+                            .instantiate(scopeFactory.serverScope(server));
 
-                discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
+                    discordApi.sendEmbed(embedFactory.embedBuilder(message).build());
+                }
+            }
+            case "run" -> {
+                logger.info("Discord user " + event.getAuthor().getName() + " running command: " + arguments);
+                server.runCommand(arguments);
             }
         }
     }

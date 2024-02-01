@@ -30,4 +30,6 @@ public interface DiscordApi {
     void postConsoleMessage(@Nonnull String msg);
 
     void setTopic(@Nonnull String msg);
+
+    void setTopic(@Nonnull String channelId, @Nonnull String msg);
 }

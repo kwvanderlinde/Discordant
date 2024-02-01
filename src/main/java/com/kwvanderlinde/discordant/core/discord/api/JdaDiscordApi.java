@@ -1,5 +1,6 @@
 package com.kwvanderlinde.discordant.core.discord.api;
 
+import com.kwvanderlinde.discordant.core.config.DiscordChannelConfig;
 import com.kwvanderlinde.discordant.core.config.DiscordConfig;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
 import net.dv8tion.jda.api.JDA;
@@ -22,49 +23,37 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.Timer;
 import java.util.TimerTask;
 
+// TODO Prefer an active object design where we have an encapsulated JDA thread. That way server
+//  init not dependent on JDA intiialization.
 public class JdaDiscordApi implements DiscordApi {
     private static final Logger logger = LogManager.getLogger(JdaDiscordApi.class);
+
+    private record ChannelHolder(@Nonnull String id, @Nonnull DiscordChannelConfig config, @Nonnull TextChannel channel) {}
 
     private final List<MessageHandler> messageHandlers = new ArrayList<>();
     private final @Nonnull JDA jda;
     private final @Nonnull DiscordConfig config;
     private final @Nonnull String botName;
+    private final List<TextChannel> channels;
     private final @Nullable TextChannel chatChannel;
     private final @Nullable TextChannel consoleChannel;
     private final @Nullable Guild guild;
     private boolean handleRateLimitations = true;
 
+    private final List<ChannelHolder> configuredChannels = new ArrayList<>();
+
     public JdaDiscordApi(@Nonnull DiscordantConfig config) {
         this.config = config.discord;
 
-        final var listener = new ListenerAdapter() {
-            @Override
-            public void onMessageReceived(@Nonnull MessageReceivedEvent event) {
-                if (event.getAuthor() == event.getJDA().getSelfUser() || event.getAuthor().isBot()) {
-                    // Don't respond to bots, including ourselves.
-                    return;
-                }
-
-                final var channelId = event.getChannel().getId();
-                if (channelId.equals(JdaDiscordApi.this.config.chatChannelId)) {
-                    messageHandlers.forEach(handler -> handler.onChatInput(event, event.getMessage().getContentRaw()));
-                }
-                else if (channelId.equals(JdaDiscordApi.this.config.consoleChannelId)) {
-                    messageHandlers.forEach(handler -> handler.onConsoleInput(event, event.getMessage().getContentRaw()));
-                }
-                else if (event.getChannelType() == ChannelType.PRIVATE) {
-                    messageHandlers.forEach(handler -> handler.onBotPmInput(event, event.getMessage().getContentRaw()));
-                }
-            }
-        };
         jda = JDABuilder.createDefault(this.config.token)
                         .setHttpClient(new OkHttpClient.Builder().build())
                         .setMemberCachePolicy(MemberCachePolicy.ALL)
                         .enableIntents(GatewayIntent.GUILD_MEMBERS, GatewayIntent.MESSAGE_CONTENT)
-                        .addEventListeners(new Object[]{ listener })
+                        .addEventListeners(new MessageReceivedListener())
                         .build();
         try {
             jda.awaitReady();
@@ -84,10 +73,40 @@ public class JdaDiscordApi implements DiscordApi {
                 guild = null;
             }
             botName = jda.getSelfUser().getName();
+
+            channels = new ArrayList<>();
+            for (final var channelConfigEntry : this.config.channels.entrySet()) {
+                final var channelId = channelConfigEntry.getKey();
+                final var channelConfig = channelConfigEntry.getValue();
+
+                if (!channelConfig.enabled) {
+                    continue;
+                }
+
+                final var channel = jda.getTextChannelById(channelId);
+                if (channel == null) {
+                    continue;
+                }
+
+                channels.add(channel);
+            }
+
             chatChannel = jda.getTextChannelById(this.config.chatChannelId);
             consoleChannel = this.config.enableLogsForwarding
                     ? jda.getTextChannelById(this.config.consoleChannelId)
                     : null;
+
+            for (final var entry : this.config.channels.entrySet()) {
+                final var channelId = entry.getKey();
+                final var channelConfig = entry.getValue();
+                final var channel = jda.getTextChannelById(botName);
+                if (channel == null) {
+                    logger.error("Unable to find channel with ID {}", channelId);
+                    continue;
+                }
+                configuredChannels.add(new ChannelHolder(channelId, channelConfig, channel));
+            }
+
         }
         catch (Exception e) {
             // Failed to load JDA somehow, so make sure it doesn't hang around and mess with the
@@ -97,10 +116,15 @@ public class JdaDiscordApi implements DiscordApi {
         }
     }
 
+    // TODO Only support sending to explicitly ID'd channels. Selection logic is for another component.
+
     @Override
     public void sendEmbed(@Nonnull MessageEmbed e) {
-        if (chatChannel != null) {
-            sendEmbed(chatChannel, e);
+        for (final var channelHolder : configuredChannels) {
+            if (!channelHolder.config().tags.contains("embed")) {
+                continue;
+            }
+            sendEmbed(channelHolder.channel(), e);
         }
     }
 
@@ -170,6 +194,33 @@ public class JdaDiscordApi implements DiscordApi {
     public void setTopic(@Nonnull String msg) {
         if (chatChannel != null) {
             chatChannel.getManager().setTopic(msg).submit(handleRateLimitations);
+        }
+    }
+
+    @Override
+    public void setTopic(@Nonnull String channelId, @Nonnull String msg) {
+        getChannel(channelId).ifPresent(configuredChannel -> configuredChannel.channel().getManager().setTopic(msg).submit(handleRateLimitations));
+    }
+
+    private Optional<ChannelHolder> getChannel(String channelId) {
+        return configuredChannels.stream().filter(holder -> holder.id.equals(channelId)).findFirst();
+    }
+
+    private final class MessageReceivedListener extends ListenerAdapter {
+        @Override
+        public void onMessageReceived(@Nonnull MessageReceivedEvent event) {
+            if (event.getAuthor() == event.getJDA().getSelfUser() || event.getAuthor().isBot()) {
+                // Don't respond to bots, including ourselves.
+                return;
+            }
+
+            if (event.getChannelType() == ChannelType.PRIVATE) {
+                // Not a configured channel, but private message with bot for linking.
+                messageHandlers.forEach(handler -> handler.onBotPrivateMessage(event, event.getMessage().getContentRaw()));
+            }
+            else {
+                messageHandlers.forEach(handler -> handler.onChannelInput(event, event.getMessage().getContentRaw()));
+            }
         }
     }
 }
