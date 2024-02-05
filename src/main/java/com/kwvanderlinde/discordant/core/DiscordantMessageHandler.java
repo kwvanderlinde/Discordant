@@ -102,7 +102,7 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
 
                     @Override
                     public String name() {
-                        return existingProfile.name();
+                        return existingProfile.playerName();
                     }
                 };
                 final var response = config.discord.messages.alreadyLinked
@@ -121,7 +121,7 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
 
                 @Override
                 public String name() {
-                    return newLinkedProfile.name();
+                    return newLinkedProfile.playerName();
                 }
             };
             final var response = config.discord.messages.successfulVerification
@@ -130,7 +130,7 @@ public class DiscordantMessageHandler implements MessageHandler, ReloadableCompo
 
             logger.info("Successfully linked discord account {} to minecraft account {} ({})",
                         newLinkedProfile.discordId(),
-                        newLinkedProfile.name(),
+                        newLinkedProfile.playerName(),
                         newLinkedProfile.uuid().toString());
         }
     }

@@ -4,6 +4,7 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 /**
@@ -18,6 +19,10 @@ public class SemanticMessage {
 
     public static SemanticMessage.Part bot(String botName) {
         return new Part(botName, new PartTag.Bot());
+    }
+
+    public static SemanticMessage.Part player(String name, UUID uuid) {
+        return new Part(name, new PartTag.Player(uuid));
     }
 
     public static SemanticMessage.Part discordSender(@Nonnull String userName, @Nonnull String userTag, @Nullable String roleName, int roleColor) {
@@ -78,7 +83,7 @@ public class SemanticMessage {
     public record Part(String text, PartTag tag) {
     }
 
-    public sealed interface PartTag permits PartTag.None, PartTag.Bot, PartTag.DiscordSender, PartTag.DiscordMention, PartTag.DiscordRoleMention, PartTag.DiscordChannelMention, PartTag.VerificationCode {
+    public sealed interface PartTag permits PartTag.None, PartTag.Bot, PartTag.Player, PartTag.DiscordSender, PartTag.DiscordMention, PartTag.DiscordRoleMention, PartTag.DiscordChannelMention, PartTag.VerificationCode {
         record None() implements PartTag {}
 
         record Bot() implements PartTag {
@@ -87,6 +92,8 @@ public class SemanticMessage {
                 return 6955481;
             }
         }
+
+        record Player(UUID uuid) implements PartTag {}
 
         record DiscordSender(String userTag, String roleName, int roleColor) implements PartTag {}
 

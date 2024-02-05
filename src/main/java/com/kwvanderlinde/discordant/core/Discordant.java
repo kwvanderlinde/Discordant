@@ -9,6 +9,7 @@ import com.kwvanderlinde.discordant.core.linkedprofiles.LinkedProfileManager;
 import com.kwvanderlinde.discordant.core.linkedprofiles.WriteThroughLinkedProfileRepository;
 import com.kwvanderlinde.discordant.core.logging.DiscordantAppender;
 import com.kwvanderlinde.discordant.core.config.DiscordantConfig;
+import com.kwvanderlinde.discordant.core.messages.SemanticMessage;
 import com.kwvanderlinde.discordant.core.messages.scopes.AdvancementScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.ChatScope;
 import com.kwvanderlinde.discordant.core.messages.scopes.DeathScope;
@@ -25,7 +26,8 @@ import com.kwvanderlinde.discordant.core.modinterfaces.Server;
 import com.kwvanderlinde.discordant.core.modinterfaces.ServerEventHandler;
 import com.kwvanderlinde.discordant.core.utils.TickedClock;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.User;
+import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.entities.UserSnowflake;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -34,7 +36,6 @@ import javax.annotation.Nonnull;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -160,22 +161,6 @@ public class Discordant {
         }
     }
 
-    private String parseDiscordMentions(String msg) {
-        final var guild = discordApi.getGuild();
-        if (guild != null) {
-            List<String> mentions = mentionPattern.matcher(msg).results().map(matchResult -> matchResult.group(0)).toList();
-            for (String s : mentions) {
-                if (User.USER_TAG.matcher(s).matches()) {
-                    Member m = guild.getMemberByTag(s);
-                    if (m != null) {
-                        msg = msg.replaceAll("@" + s, "<@!" + m.getId() + ">");
-                    }
-                }
-            }
-        }
-        return msg;
-    }
-
     private final class DiscordantServerEventHandler implements ServerEventHandler {
         @Override
         public void onServerStarted(Server server) {
@@ -242,14 +227,31 @@ public class Discordant {
         }
     }
 
+    // Possessive match
+    private static final Pattern USERNAME_MENTION = Pattern.compile("@([0-9A-Za-z_]++)");
+
     private final class DiscordantPlayerEventHandler implements PlayerEventHandler {
         @Override
         public void onPlayerSentMessage(Player player, String chatMessage, String plainTextCompositeMessage) {
-            final var server = player.server();
+            if (config.linking.enabled) {
+                final var messageBuilder = new StringBuilder();
 
-            if (config.discord.enableMentions) {
-                chatMessage = parseDiscordMentions(chatMessage);
+                // Map @MinecraftUser to equivalent discord mention.
+                final var matcher = USERNAME_MENTION.matcher(chatMessage);
+                while (matcher.find()) {
+                    final var playerName = matcher.group(1);
+                    final var profile = linkedProfileManager.getRepository().getByPlayerName(playerName);
+                    if (profile == null) {
+                        continue;
+                    }
+
+                    matcher.appendReplacement(messageBuilder, "<@!" + profile.discordId() + ">");
+                }
+
+                chatMessage = messageBuilder.toString();
             }
+
+            final var server = player.server();
 
             final var message = config.discord.messages.playerChat
                     .instantiate(new ChatScope(
@@ -355,6 +357,46 @@ public class Discordant {
 
     private final class DiscordantCommandEventHandler implements CommandEventHandler {
         @Override
+        public void onAdminLinkUser(Server server, Profile profile, String discordId, Responder respondWith) {
+            final var discordUser = discordApi.getUserById(discordId);
+            if (discordUser == null) {
+                respondWith.failure(config.minecraft.messages.adminLinkUnknownDiscordUser
+                                            .instantiate(scopeFactory.unknownDiscordUserScope(discordId)));
+                return;
+            }
+
+
+            final var result = linkedProfileManager.addLinkedProfile(profile.uuid(), profile.name(), discordId);
+            if (result instanceof LinkedProfileManager.AlreadyLinked alreadyLinked) {
+                respondWith.failure(config.minecraft.messages.accountAlreadyLinked
+                                            .instantiate(scopeFactory.playerScope(profile, server, discordApi.getUserById(alreadyLinked.existingProfile().discordId()))));
+                return;
+            }
+
+            if (result instanceof LinkedProfileManager.SuccessfulLink successfulLink) {
+                final var response = config.minecraft.messages.adminLinkSuccessful
+                        .instantiate(scopeFactory.playerScope(profile, server, discordUser));
+                respondWith.success(response);
+                return;
+            }
+        }
+
+        @Override
+        public void onAdminUnlinkUser(Server server, Profile profile, Responder respondWith) {
+            final var wasDeleted = linkedProfileManager.removeLinkedProfile(profile.uuid());
+            if (wasDeleted) {
+                final var component = config.minecraft.messages.codeUnlinkMsg
+                        .instantiate(new NilScope());
+                respondWith.success(component);
+            }
+            else {
+                final var component = config.minecraft.messages.codeUnlinkFail
+                        .instantiate(new NilScope());
+                respondWith.failure(component);
+            }
+        }
+
+        @Override
         public void onLink(Player player, Responder respondWith) {
             final var server = player.server();
             final var existingDiscordId = linkedProfileManager.getDiscordIdForPlayerId(player.uuid());
@@ -382,6 +424,62 @@ public class Discordant {
                         .instantiate(new NilScope());
                 respondWith.failure(component);
             }
+        }
+
+        @Override
+        public void onListLinkedProfiles(Player player, Responder respondWith) {
+            final var repo = linkedProfileManager.getRepository();
+            final var profiles = repo.getLinkedProfiles();
+            if (profiles.isEmpty()) {
+                respondWith.success(new SemanticMessage()
+                                            .append("No profiles have been linked"));
+                return;
+            }
+
+            final var message = new SemanticMessage()
+                    .append("Found these linked profiles:");
+
+            for (final var linkedProfile : profiles) {
+                final var minecraftName = linkedProfile.playerName();
+                message.append("\n")
+                       .append(SemanticMessage.player(minecraftName, linkedProfile.uuid()))
+                       .append(" -> ");
+
+                /*
+                 * Three cases:
+                 * 1. The discord user no longer exists.
+                 * 2. The discord user exists but is no longer a member of the guild.
+                 * 3. The discord user exists and is still a member of the guild.
+                 */
+
+                final var discordUser = discordApi.getUserById(linkedProfile.discordId());
+                final var guild = discordApi.getGuild();
+                final var discordMember = (guild == null || discordUser == null)
+                        ? null
+                        : guild.getMember(UserSnowflake.fromId(discordUser.getId()));
+
+                if (discordMember != null) {
+                    // The bestest of messages.
+                    message.append(SemanticMessage.discordMention(discordMember.getEffectiveName(),
+                                                                  discordMember.getUser().getAsTag(),
+                                                                  discordMember.getRoles().isEmpty() ? "" : discordMember.getRoles().get(0).getName(),
+                                                                  discordMember.getColorRaw()
+                    ));
+                }
+                else if (discordUser != null) {
+                    // A fairly plain messages.
+                    message.append(SemanticMessage.discordMention(discordUser.getEffectiveName(),
+                                                                  discordUser.getAsTag(),
+                                                                  "",
+                                                                  Role.DEFAULT_COLOR_RAW));
+                }
+                else {
+                    // The plainest of messages.
+                    message.append("@<").append(linkedProfile.discordId()).append(">");
+                }
+            }
+
+            respondWith.success(message);
         }
 
         @Override

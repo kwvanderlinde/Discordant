@@ -1,6 +1,7 @@
 package com.kwvanderlinde.discordant.core.linkedprofiles;
 
 import javax.annotation.Nullable;
+import java.util.Collection;
 import java.util.UUID;
 
 /**
@@ -8,6 +9,12 @@ import java.util.UUID;
  */
 public interface LinkedProfileRepository {
     // TODO Exceptions for failure states.
+
+    Collection<LinkedProfile> getLinkedProfiles();
+
+    default @Nullable LinkedProfile getByPlayerName(String name) {
+        return getLinkedProfiles().stream().filter(profile -> profile.playerName().equalsIgnoreCase(name)).findFirst().orElse(null);
+    }
 
     /**
      * Looks up a linked profile by UUID.

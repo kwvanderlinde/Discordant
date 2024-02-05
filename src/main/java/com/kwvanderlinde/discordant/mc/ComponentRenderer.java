@@ -33,6 +33,16 @@ public class ComponentRenderer implements SemanticMessageRenderer<Component> {
                                                  .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, Component.literal(Language.getInstance().getOrDefault("chat.copy.click")).withStyle(ChatFormatting.GREEN)))
                                                  .withClickEvent(new ClickEvent(ClickEvent.Action.COPY_TO_CLIPBOARD, part.text()))));
             }
+            else if (part.tag() instanceof SemanticMessage.PartTag.Player player) {
+                final var hoverComponent = Component.literal("Send message")
+                                                    .withStyle(ChatFormatting.GREEN);
+
+                component.append(Component.literal(part.text())
+                         .setStyle(Style.EMPTY.withItalic(true)
+                                              .withUnderlined(true)
+                                              .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, hoverComponent))
+                                              .withClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/msg " + part.text()))));
+            }
             else if (part.tag() instanceof SemanticMessage.PartTag.DiscordSender discordSender) {
                 final var roleText = ((discordSender.roleName() == null) ? "" : (discordSender.roleName() + " "))
                         + discordSender.userTag();

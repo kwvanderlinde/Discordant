@@ -13,7 +13,7 @@ public class LinkedProfile {
         this.discordId = discordId;
     }
 
-    public String name() {
+    public String playerName() {
         return name;
     }
 

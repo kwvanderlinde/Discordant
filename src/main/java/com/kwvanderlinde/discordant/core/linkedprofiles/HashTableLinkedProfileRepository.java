@@ -2,6 +2,7 @@ package com.kwvanderlinde.discordant.core.linkedprofiles;
 
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -11,6 +12,11 @@ import java.util.UUID;
  */
 public class HashTableLinkedProfileRepository implements LinkedProfileRepository {
     private final Map<UUID, LinkedProfile> profiles = new HashMap<>();
+
+    @Override
+    public Collection<LinkedProfile> getLinkedProfiles() {
+        return profiles.values();
+    }
 
     @Override
     public @Nullable LinkedProfile getByPlayerId(UUID uuid) {

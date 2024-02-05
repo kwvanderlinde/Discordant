@@ -19,18 +19,25 @@ public class LinkedProfileManager implements ReloadableComponent {
     private final HashMap<UUID, VerificationData> pendingLinkVerification = new HashMap<>();
     private final Random r = new Random();
 
+    public sealed interface AddProfileResult
+            permits AlreadyLinked, SuccessfulLink {
+    }
     public sealed interface VerificationResult
             permits InvalidCode, IncorrectCode, AlreadyLinked, SuccessfulLink {
     }
     public record InvalidCode(String code) implements VerificationResult {}
     public record IncorrectCode(String code) implements VerificationResult {}
-    public record AlreadyLinked(LinkedProfile existingProfile) implements VerificationResult {}
-    public record SuccessfulLink(LinkedProfile newProfile) implements VerificationResult {}
+    public record AlreadyLinked(LinkedProfile existingProfile) implements VerificationResult, AddProfileResult {}
+    public record SuccessfulLink(LinkedProfile newProfile) implements VerificationResult, AddProfileResult {}
 
     public LinkedProfileManager(LinkingConfig config, Clock clock, LinkedProfileRepository linkedProfileRepository) {
         this.config = config;
         this.clock = clock;
         this.linkedProfileRepository = linkedProfileRepository;
+    }
+
+    public LinkedProfileRepository getRepository() {
+        return linkedProfileRepository;
     }
 
     @Override
@@ -131,7 +138,7 @@ public class LinkedProfileManager implements ReloadableComponent {
             final var newLinkedProfile = new LinkedProfile(data.name(), uuid, authorId);
             linkedProfileRepository.put(newLinkedProfile);
             pendingLinkVerification.remove(uuid);
-            linkedPlayersByDiscordId.put(newLinkedProfile.discordId(), newLinkedProfile.name());
+            linkedPlayersByDiscordId.put(newLinkedProfile.discordId(), newLinkedProfile.playerName());
 
             return new SuccessfulLink(newLinkedProfile);
         }
@@ -139,5 +146,21 @@ public class LinkedProfileManager implements ReloadableComponent {
             pendingLinkVerification.remove(uuid);
             return new AlreadyLinked(existingProfile);
         }
+    }
+
+    public AddProfileResult addLinkedProfile(final UUID uuid, final String playerName, final String discordId) {
+        final var existingProfile = linkedProfileRepository.getByPlayerId(uuid);
+
+        if (existingProfile != null) {
+            return new AlreadyLinked(existingProfile);
+        }
+
+        // Profile entry does not exist yet. Create it.
+        final var newLinkedProfile = new LinkedProfile(playerName, uuid, discordId);
+        linkedProfileRepository.put(newLinkedProfile);
+        pendingLinkVerification.remove(uuid);
+        linkedPlayersByDiscordId.put(newLinkedProfile.discordId(), newLinkedProfile.playerName());
+
+        return new SuccessfulLink(newLinkedProfile);
     }
 }

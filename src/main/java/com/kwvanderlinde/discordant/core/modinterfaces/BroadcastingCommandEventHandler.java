@@ -15,6 +15,16 @@ public class BroadcastingCommandEventHandler implements CommandEventHandler {
     }
 
     @Override
+    public void onAdminLinkUser(Server server, Profile profile, String discordId, Responder respondWith) {
+        handlers.forEach(handler -> handler.onAdminLinkUser(server, profile, discordId, respondWith));
+    }
+
+    @Override
+    public void onAdminUnlinkUser(Server server, Profile profile, Responder respondWith) {
+        handlers.forEach(handler -> handler.onAdminUnlinkUser(server, profile, respondWith));
+    }
+
+    @Override
     public void onLink(Player player, Responder respondWith) {
         handlers.forEach(handler -> handler.onLink(player, respondWith));
     }
@@ -22,6 +32,11 @@ public class BroadcastingCommandEventHandler implements CommandEventHandler {
     @Override
     public void onUnlink(Player player, Responder respondWith) {
         handlers.forEach(handler -> handler.onUnlink(player, respondWith));
+    }
+
+    @Override
+    public void onListLinkedProfiles(Player player, Responder respondWith) {
+        handlers.forEach(handlers -> handlers.onListLinkedProfiles(player, respondWith));
     }
 
     @Override

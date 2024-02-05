@@ -7,6 +7,8 @@ import org.jetbrains.annotations.Nullable;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.UUID;
 
 public class ConfigProfileRepository implements LinkedProfileRepository {
@@ -18,6 +20,22 @@ public class ConfigProfileRepository implements LinkedProfileRepository {
 
     private Path getProfilePath(UUID uuid) {
         return this.profileDirectory.resolve(uuid.toString() + ".json");
+    }
+
+    @Override
+    public Collection<LinkedProfile> getLinkedProfiles() {
+        final var profiles = new ArrayList<LinkedProfile>();
+        try (final var stream = Files.newDirectoryStream(profileDirectory, "*.json")) {
+            for (final Path linkedPath : stream) {
+                try (final var reader = new FileReader(linkedPath.toFile())) {
+                    profiles.add(new Gson().fromJson(reader, LinkedProfile.class));
+                }
+            }
+        }
+        catch (IOException e) {
+            // TODO Log message
+        }
+        return profiles;
     }
 
     @Override

@@ -53,12 +53,21 @@ public class ScopeFactory implements ReloadableComponent{
         );
     }
 
+    public DiscordUserScope discordUserScope(User user) {
+        // TODO Username instead of tag?
+        return new DiscordUserScope(user.getId(), user.getName(), user.getAsTag());
+    }
+
+    public DiscordUserScope unknownDiscordUserScope(String discordId) {
+        return new DiscordUserScope(discordId, "", "");
+    }
+
     public PlayerScope playerScope(Profile profile, Server server, User user) {
         return new PlayerScope(
                 profileScope(profile, server),
                 (user == null)
-                        ? new DiscordUserScope("", "", "")
-                        : new DiscordUserScope(user.getId(), user.getName(), user.getAsTag()),
+                        ? unknownDiscordUserScope("")
+                        : discordUserScope(user),
                 getPlayerIconUrl(profile, server),
                 getAvatarUrls(profile, server));
     }
